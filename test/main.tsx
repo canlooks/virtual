@@ -6,7 +6,8 @@ createRoot(document.getElementById('app')!).render(<App/>)
 
 function App() {
     const users = useMemo(() => {
-        return Array.from({length: 1000}, (_, index) => ({
+        // return Array.from({length: 640_000}, (_, index) => ({
+        return Array.from({length: 32}, (_, index) => ({
             name: `User ${index}`,
             bgColor: `hsl(${Math.random() * 360}, 70%, 80%)`,
             size: Math.floor(Math.random() * 100) + 100,
@@ -21,17 +22,16 @@ function App() {
             <div>
                 <button onClick={() => ref.current!.scrollToIndex(0)}>to 0</button>
                 <button onClick={() => ref.current!.scrollToIndex(50)}>to 50</button>
-                <button onClick={() => ref.current!.scrollToIndex({
-                    index: 100,
-                    align: 'center',
-                    behavior: 'smooth'
-                })}>to 100</button>
+                <button onClick={() => ref.current!.scrollTo({
+                    top: 67
+                })}>test</button>
             </div>
             <VList
                 ref={ref}
                 style={{height: 800}}
-                itemSize={110}
+                itemSize={100}
                 totalCount={users.length}
+                components={{Scroller: 'div'}}
                 renderItem={index => {
                     const user = users[index]
                     return (
@@ -41,7 +41,7 @@ function App() {
                                 padding: '0.5rem',
                                 boxSizing: 'border-box',
                                 // height: `${user.size}px`
-                                height: 110
+                                height: 100
                             }}
                         >
                             <p><strong>{user.name}</strong></p>

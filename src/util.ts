@@ -1,24 +1,7 @@
-import {Dispatch, Ref, RefObject, SetStateAction, useCallback, useRef, useState} from 'react'
+import {Dispatch, RefObject, SetStateAction, useCallback, useRef, useState} from 'react'
 
-export const MAX_DOM_HEIGHT = 32_000_000
-
-/**
- * 克隆Ref
- * @param refs
- */
-// export function cloneRef<T>(...refs: (Ref<T> | undefined)[]): (ref: T | null) => void {
-//     return (r: T | null) => {
-//         refs.forEach(ref => {
-//             if (ref) {
-//                 if (typeof ref === 'function') {
-//                     ref(r)
-//                 } else {
-//                     ref.current = r
-//                 }
-//             }
-//         })
-//     }
-// }
+// export const MAX_DOM_SIZE= 32_000_000
+export const MAX_DOM_SIZE = 1600
 
 /**
  * 将某个值使用ref同步，主要用于对付组件的闭包问题
@@ -52,7 +35,7 @@ export function useSyncState(initialState?: any): [RefObject<any>, Dispatch<SetS
  * 二分查找
  * @param arr
  * @param callback 返回负数，向右查找；返回正数，向左查找；返回0表示找到
- * @return {number} 返回目标索引，若为浮点数（如0.5）表示没有找到，索引指向两项之间，使用时可通过 “取余1”来判断
+ * @return 返回目标索引，若为浮点数（如0.5）表示没有找到，索引指向两项之间，使用时可通过 “取余1”来判断
  */
 export function binarySearch<T = any>(arr: T[], callback: (value: T, index: number, arr: T[]) => number) {
     let left = 0
