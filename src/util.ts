@@ -1,8 +1,5 @@
 import {Dispatch, RefObject, SetStateAction, useCallback, useRef, useState} from 'react'
 
-// export const MAX_DOM_SIZE= 32_000_000
-export const MAX_DOM_SIZE = 1600
-
 /**
  * 将某个值使用ref同步，主要用于对付组件的闭包问题
  * @param value
