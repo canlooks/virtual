@@ -1,5 +1,5 @@
-import React, {ComponentType, ReactNode} from 'react'
-import {useVirtual, VirtualCommonProps} from '../core'
+import React, {ComponentType, memo, ReactNode} from 'react'
+import {useVirtual, VirtualListCommonProps} from '../core'
 
 export type VTableComponents = {
     /** 默认为`<div>` */
@@ -10,7 +10,7 @@ export type VTableComponents = {
     Row?: ComponentType<any> | string
 }
 
-export interface VTableProps extends Omit<VirtualCommonProps, 'itemSize' | 'orientation'>,
+export interface VTableProps extends Omit<VirtualListCommonProps, 'itemSize' | 'orientation'>,
     Omit<React.JSX.IntrinsicElements['table'], 'ref'> {
     /** 固定行高，可获得更好的性能 */
     rowHeight?: number
@@ -27,18 +27,18 @@ export interface VTableProps extends Omit<VirtualCommonProps, 'itemSize' | 'orie
     components?: VTableComponents
 }
 
-export function VTable({
+export const VTable = memo(({
     ref,
-    rowHeight,
     totalCount = 0,
     bufferCount = 1,
 
+    rowHeight,
     renderRowContent,
     header,
     footer,
     components = {},
     ...props
-}: VTableProps) {
+}: VTableProps) => {
     const {
         Scroller = 'div',
         Table = 'table',
@@ -86,4 +86,4 @@ export function VTable({
             </div>
         </Scroller>
     )
-}
+})

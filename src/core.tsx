@@ -17,75 +17,121 @@ export type ScrollToIndexOptions = {
     offset?: number
 }
 
-export interface VirtualRef extends HTMLElement {
+export interface GroupedScrollToIndexOptions extends Omit<ScrollToIndexOptions, 'index'> {
+    itemIndex?: number
+    groupIndex?: number
+}
+
+export interface VirtualListRef extends HTMLElement {
     scrollToIndex(index: number): void
     scrollToIndex(options: ScrollToIndexOptions): void
 }
 
-export type VirtualCommonProps = {
-    ref?: Ref<VirtualRef>
+export interface VirtualGroupRef extends HTMLElement {
+    scrollToIndex(groupIndex: number, itemIndex: number): void
+    scrollToIndex(options: GroupedScrollToIndexOptions): void
+}
+
+type VirtualCommonProps = {
     /** 固定元素的尺寸，可获得更好的性能 */
     itemSize?: number
-    totalCount?: number
     /** 滚动方向，默认为`vertical` */
     orientation?: 'vertical' | 'horizontal'
     /** 缓冲数量，默认为`1`，通常无需修改 */
     bufferCount?: number
-    /** 返回值会被{@link UseVirtualParams.itemComponent}包裹，当作{@link UseVirtualParams.itemComponent}的`children`渲染 */
+}
+
+export interface VirtualListCommonProps extends VirtualCommonProps {
+    ref?: Ref<VirtualListRef>
+    totalCount?: number
+    /** 返回值会被{@link itemComponent}包裹，当作{@link itemComponent}的`children`渲染 */
     renderItemContent?(index: number): ReactNode
 }
 
-interface UseVirtualParams extends VirtualCommonProps {
-    itemComponent?: any
+export interface VirtualGroupedCommonProps extends VirtualCommonProps {
+    ref?: Ref<VirtualGroupRef>
+    /** 固定分组标题的尺寸可获得更好的性能，默认与{@link itemSize}相等 */
+    groupTitleSize?: number
+    /**
+     * 分组数量与每组元素的数量，接受一个数组
+     * @example [2, 3, 4]，表示总共有3组，每组分别有2, 3, 4个元素
+     */
+    groupedCounts?: number[]
+    /** 返回值会被{@link groupTitleComponent}包裹，当作{@link groupTitleComponent}的`children`渲染 */
+    renderGroupTitle?(groupIndex: number): ReactNode
+    /** 返回值会被{@link itemComponent}包裹，当作{@link itemComponent}的`children`渲染 */
+    renderItemContent?(itemIndex: number, groupIndex: number): ReactNode
 }
 
-export function useVirtual({
+type VirtualRef<Mode extends 'list' | 'group' = 'list'> = Mode extends 'list' ? VirtualListRef : VirtualGroupRef
+
+interface UseVirtualListParams<Mode extends 'list' | 'group' = 'list'> extends Omit<VirtualListCommonProps, 'ref' | 'renderItemContent'>,
+    Omit<VirtualGroupedCommonProps, 'ref' | 'renderItemContent'> {
+    mode?: Mode
+    ref?: Ref<VirtualRef<Mode>>
+    itemComponent?: any
+    groupTitleComponent?: any
+    renderItemContent?(itemIndex: number, groupIndex?: number): ReactNode
+}
+
+export function useVirtual<Mode extends 'list' | 'group' = 'list'>({
+    mode = 'list' as Mode,
     ref,
     itemSize,
-    totalCount = 0,
     orientation = 'vertical',
     bufferCount = 1,
+    totalCount: definedTotalCount = 0,
+    groupTitleSize = itemSize,
+    groupedCounts,
+    renderGroupTitle,
     renderItemContent,
+    groupTitleComponent: GroupTitle = 'div',
     itemComponent: Item = 'div'
-}: UseVirtualParams): {
-    scrollerRef: Ref<VirtualRef>
+}: UseVirtualListParams<Mode>): {
+    scrollerRef: Ref<VirtualRef<Mode>>
     scrollerStyle: CSSProperties
     wrapperRef: Ref<any>
     wrapperStyle: CSSProperties
     renderedItems: ReactNode[]
 } {
-    useImperativeHandle(ref, () => {
+    useImperativeHandle(ref as any, () => {
         if (scrollerRef.current) {
-            scrollerRef.current.scrollToIndex = (a: number | ScrollToIndexOptions) => {
-                let {index, align = 'start', behavior, offset = 0} = typeof a === 'number' ? {index: a} : a
-                const targetStart = index ? sizeSteps.current[index - 1] : 0
-                const targetEnd = sizeSteps.current[index]
-                if (align === 'nearest') {
-                    const currentStart = scrollerRef.current![scrollPosProps]
-                    const currentEnd = currentStart + scrollerRef.current![clientSizeProp]
-                    const startDistance = Math.abs(targetStart - currentStart)
-                    const endDistance = Math.abs(targetEnd - currentEnd)
-                    align = startDistance < endDistance ? 'start' : 'end'
+            if (mode === 'list') {
+                scrollerRef.current.scrollToIndex = (a: number | ScrollToIndexOptions) => {
+                    let {index, align = 'start', behavior, offset = 0} = typeof a === 'number' ? {index: a} : a
+                    const targetStart = index ? sizeSteps.current[index - 1] : 0
+                    const targetEnd = sizeSteps.current[index]
+                    if (align === 'nearest') {
+                        const currentStart = scrollerRef.current![scrollPosProps]
+                        const currentEnd = currentStart + scrollerRef.current![clientSizeProp]
+                        const startDistance = Math.abs(targetStart - currentStart)
+                        const endDistance = Math.abs(targetEnd - currentEnd)
+                        align = startDistance < endDistance ? 'start' : 'end'
+                    }
+                    let targetPosition
+                    switch (align) {
+                        case 'start':
+                            targetPosition = targetStart + offset
+                            break
+                        case 'end':
+                            targetPosition = targetEnd - scrollerRef.current![clientSizeProp] - offset
+                            break
+                        default:
+                            // 'center'
+                            targetPosition = targetStart + (targetEnd - targetStart - scrollerRef.current![clientSizeProp]) / 2
+                    }
+                    scrollerRef.current!.scrollTo({
+                        [isVertical ? 'top' : 'left']: targetPosition,
+                        behavior
+                    })
                 }
-                let targetPosition
-                switch (align) {
-                    case 'start':
-                        targetPosition = targetStart + offset
-                        break
-                    case 'end':
-                        targetPosition = targetEnd - scrollerRef.current![clientSizeProp] - offset
-                        break
-                    default:
-                        // 'center'
-                        targetPosition = targetStart + (targetEnd - targetStart - scrollerRef.current![clientSizeProp]) / 2
+            } else {
+                scrollerRef.current.scrollToIndex = (a: number | ScrollToOptions, itemIndex?: number) => {
+                    // TODO
                 }
-                scrollerRef.current!.scrollTo({
-                    [isVertical ? 'top' : 'left']: targetPosition,
-                    behavior
-                })
             }
         }
-        return scrollerRef.current as VirtualRef
+        return scrollerRef.current as any
     })
 
     const isVertical = orientation === 'vertical'
@@ -93,7 +139,18 @@ export function useVirtual({
     const scrollPosProps = isVertical ? 'scrollTop' : 'scrollLeft'
     const clientSizeProp = isVertical ? 'clientHeight' : 'clientWidth'
 
-    const scrollerRef = useRef<VirtualRef>(null)
+    const totalCount = useMemo(() => {
+        if (mode === 'list') {
+            return definedTotalCount
+        }
+        if (!groupedCounts) {
+            return 0
+        }
+        const itemCount = groupedCounts.reduce((prev, curr) => prev + curr, 0)
+        return itemCount + groupedCounts.length
+    }, [groupedCounts, definedTotalCount, mode])
+
+    const scrollerRef = useRef<VirtualRef<Mode>>(null)
     const wrapperRef = useRef<HTMLDivElement>(null)
     const itemRefs = useRef<{ el: HTMLElement, index: number }[]>([])
 
@@ -167,7 +224,10 @@ export function useVirtual({
         }
         // 加上缓冲数量，同时防止越界
         start = Math.max(start - bufferCount, 0)
-        end = Math.min(end + bufferCount, totalCount)
+        end = mode === 'list'
+            ? Math.min(end + bufferCount, totalCount)
+            // group模式由于强制渲染了groupTitle，所以需要多渲染一个
+            : Math.min(end + bufferCount + 1, totalCount)
 
         sync
             ? flushSync(() => setRange([start, end]))
@@ -185,25 +245,78 @@ export function useVirtual({
         calculateRange(false)
     }, [totalCount, bufferCount])
 
+    // 所有groupTitle对应的index
+    const groupTitleIndices = useMemo(() => {
+        const indices: number[] = []
+        if (mode === 'group' && groupedCounts) {
+            let groupIndex = 0
+            for (let i = 0, {length} = groupedCounts; i < length; i++) {
+                indices.push(groupIndex)
+                groupIndex += groupedCounts[i] + 1
+            }
+        }
+        return indices
+    }, [groupedCounts, mode])
+
     // 渲染Items
     const renderedItems = useMemo(() => {
         itemRefs.current = []
         const ret: ReactNode[] = []
-        for (let i = start; i < end; i++) {
-            ret.push(
-                <Item
-                    key={i}
-                    ref={(el: any) => {
-                        el && itemRefs.current.push({el, index: i})
-                    }}
-                    style={{overflowAnchor: 'none'}}
-                >
-                    {renderItemContent?.(i)}
-                </Item>
-            )
+        if (mode === 'list') {
+            for (let i = start; i < end; i++) {
+                ret.push(
+                    <Item
+                        key={i}
+                        ref={(el: any) => {
+                            el && itemRefs.current.push({el, index: i})
+                        }}
+                        style={{overflowAnchor: 'none'}}
+                    >
+                        {(renderItemContent)?.(i)}
+                    </Item>
+                )
+            }
+        } else {
+            // mode === 'group'
+            for (let i = start; i < end; i++) {
+                const gi = binarySearch(groupTitleIndices, ti => ti - i)
+                const isGroupTitle = gi % 1 === 0
+                const groupIndex = Math.floor(gi)
+
+                const render = (groupIndex: number, isGroupTitle: boolean) => {
+                    const Component = isGroupTitle ? GroupTitle : Item
+                    const itemIndex = i - groupIndex
+                    return (
+                        <Component
+                            key={isGroupTitle ? groupIndex : `${groupIndex}-${itemIndex}`}
+                            ref={(el: any) => {
+                                el && itemRefs.current.push({el, index: i})
+                            }}
+                            style={{
+                                overflowAnchor: 'none',
+                                ...isGroupTitle && {
+                                    position: 'sticky',
+                                    top: 0
+                                }
+                            }}
+                        >
+                            {isGroupTitle
+                                ? renderGroupTitle?.(groupIndex)
+                                : renderItemContent?.(i - groupIndex, groupIndex)
+                            }
+                        </Component>
+                    )
+                }
+                // 视口的第一组需要强制渲染groupTitle
+                if (i === start && !isGroupTitle) {
+                    ret.push(render(groupIndex, true))
+                } else if (i < end - 1) {
+                    ret.push(render(groupIndex, isGroupTitle))
+                }
+            }
         }
         return ret
-    }, [start, end, renderItemContent])
+    }, [start, end, renderItemContent, groupTitleIndices, renderGroupTitle])
 
     const cachedItemSizes = useRef<(number | undefined)[]>([])
 
@@ -255,14 +368,16 @@ export function useVirtual({
 
     // 固定itemSize，直接计算sizeSteps
     useEffect(() => {
-        if (itemSize) {
+        if (itemSize && groupTitleSize) {
             const steps = []
+            let cumulated = 0
             for (let i = 0; i < totalCount; i++) {
-                steps.push((i + 1) * itemSize)
+                cumulated += groupTitleIndices.includes(i) ? groupTitleSize : itemSize
+                steps.push(cumulated)
             }
             setSizeSteps(steps, false)
         }
-    }, [totalCount, itemSize])
+    }, [totalCount, itemSize, groupTitleIndices, groupTitleSize])
 
     // 监听滚动位置变化
     useEffect(() => {

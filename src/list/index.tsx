@@ -1,5 +1,5 @@
-import React, {ComponentType, JSX, ReactNode, useMemo} from 'react'
-import {useVirtual, VirtualCommonProps} from '../core'
+import React, {ComponentType, JSX, memo} from 'react'
+import {useVirtual, VirtualListCommonProps} from '../core'
 
 export type VListComponents = {
     Scroller?: ComponentType<any> | string
@@ -7,12 +7,12 @@ export type VListComponents = {
     Item?: ComponentType<any> | string
 }
 
-export interface VListProps extends VirtualCommonProps, Omit<JSX.IntrinsicElements['div'], 'ref'> {
+export interface VListProps extends VirtualListCommonProps, Omit<JSX.IntrinsicElements['div'], 'ref'> {
     /** 自定义渲染元素，默认均为`div` */
     components?: VListComponents
 }
 
-export function VList({
+export const VList = memo(({
     ref,
     itemSize,
     totalCount = 0,
@@ -22,7 +22,7 @@ export function VList({
     renderItemContent,
     components = {},
     ...props
-}: VListProps) {
+}: VListProps) => {
     const {
         Scroller = 'div',
         List = 'div',
@@ -57,4 +57,4 @@ export function VList({
             </List>
         </Scroller>
     )
-}
+})

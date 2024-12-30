@@ -32,7 +32,7 @@ export function useSyncState(initialState?: any): [RefObject<any>, Dispatch<SetS
  * 二分查找
  * @param arr
  * @param callback 返回负数，向右查找；返回正数，向左查找；返回0表示找到
- * @return 返回目标索引，若为浮点数（如0.5）表示没有找到，索引指向两项之间，使用时可通过 “取余1”来判断
+ * @return 返回目标索引，若为浮点数（如0.5）表示没有找到，索引指向两项之间，使用时可通过 “取余1”来判断，整数取余1得零，否则得0.5
  */
 export function binarySearch<T = any>(arr: T[], callback: (value: T, index: number, arr: T[]) => number) {
     let left = 0
