@@ -1,5 +1,5 @@
-import {useVirtual, VirtualGroupedCommonProps} from '../core'
-import React, {ComponentType, JSX, useMemo} from 'react'
+import {useVirtual, VirtualGroupedCommonProps} from './core'
+import React, {ComponentType, JSX} from 'react'
 
 export type GroupedVListComponents = {
     Scroller?: ComponentType<any> | string

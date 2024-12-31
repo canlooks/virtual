@@ -28,10 +28,20 @@
   "module": "dist/esm/index.js",
   "types": "dist/esm/index.d.ts",
   "exports": {
-    ".": {
-      "types": "./dist/esm/index.d.ts",
-      "import": "./dist/esm/index.js",
-      "require": "./dist/cjs/index.js"
+    "./grouped": {
+      "types": "./dist/esm/grouped.d.ts",
+      "import": "./dist/esm/grouped.js",
+      "require": "./dist/cjs/grouped.js"
+    },
+    "./list": {
+      "types": "./dist/esm/list.d.ts",
+      "import": "./dist/esm/list.js",
+      "require": "./dist/cjs/list.js"
+    },
+    "./table": {
+      "types": "./dist/esm/table.d.ts",
+      "import": "./dist/esm/table.js",
+      "require": "./dist/cjs/table.js"
     }
   },
   "scripts": {
@@ -46,11 +56,11 @@
   },
   "devDependencies": {
     "@canlooks/tscup": "^0.1.2",
-    "@types/react": "^19.0.1",
+    "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "typescript": "^5.7.2",
-    "vite": "^6.0.3"
+    "vite": "^6.0.6"
   }
 }

@@ -1,5 +1,5 @@
 import React, {ComponentType, memo, ReactNode} from 'react'
-import {useVirtual, VirtualListCommonProps} from '../core'
+import {useVirtual, VirtualListCommonProps} from './core'
 
 export type VTableComponents = {
     /** 默认为`<div>` */

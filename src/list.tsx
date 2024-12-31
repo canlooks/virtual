@@ -1,5 +1,5 @@
 import React, {ComponentType, JSX, memo} from 'react'
-import {useVirtual, VirtualListCommonProps} from '../core'
+import {useVirtual, VirtualListCommonProps} from './core'
 
 export type VListComponents = {
     Scroller?: ComponentType<any> | string
@@ -15,6 +15,7 @@ export interface VListProps extends VirtualListCommonProps, Omit<JSX.IntrinsicEl
 export const VList = memo(({
     ref,
     itemSize,
+    gridCount = 1,
     totalCount = 0,
     orientation = 'vertical',
     bufferCount = 1,
@@ -36,6 +37,7 @@ export const VList = memo(({
     } = useVirtual({
         ref,
         itemSize,
+        gridCount,
         totalCount,
         orientation,
         bufferCount,
