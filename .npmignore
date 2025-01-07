@@ -1,6 +1,6 @@
 /*
 
-# Ignore all files except those.(means include those)
+# Ignore all files except those
 !/dist
 !/grouped
 !/list
