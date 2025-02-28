@@ -30,6 +30,7 @@ type VirtualCommonProps = {
     orientation?: 'vertical' | 'horizontal'
     /** 缓冲数量，默认为`1`，通常无需修改 */
     bufferCount?: number
+    onRangeChange?(start: number, end: number): void
 }
 
 export interface VirtualListCommonProps extends VirtualCommonProps {
@@ -69,6 +70,7 @@ export function useVirtual({
     orientation = 'vertical',
     gridCount = 1,
     bufferCount = 1,
+    onRangeChange,
     totalCount = 0,
     groupTitleSize = itemSize,
     groupedCounts,
@@ -185,6 +187,7 @@ export function useVirtual({
     const setRange = (newRange: [number, number]) => {
         if (newRange[0] !== range.current[0] || newRange[1] !== range.current[1]) {
             _setRange(newRange)
+            onRangeChange?.(...newRange)
         }
     }
     const [start, end] = range.current
@@ -268,6 +271,9 @@ export function useVirtual({
                         }}
                         style={{
                             overflowAnchor: 'none',
+                            ...itemSize && {
+                                [orientation === 'vertical' ? 'height' : 'width']: itemSize,
+                            },
                             ...gridCount > 1 && {
                                 [orientation === 'vertical' ? 'width' : 'height']: `${100 / gridCount}%`
                             }

@@ -1,6 +1,6 @@
 {
   "name": "@canlooks/virtual",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "C.CanLiang <canlooks@gmail.com>",
   "description": "My ui framework",
   "license": "MIT",
@@ -28,6 +28,11 @@
   "module": "dist/esm/index.js",
   "types": "dist/esm/index.d.ts",
   "exports": {
+    ".": {
+      "types": "./dist/esm/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    },
     "./grouped": {
       "types": "./dist/esm/grouped.d.ts",
       "import": "./dist/esm/grouped.js",
@@ -56,11 +61,12 @@
   },
   "devDependencies": {
     "@canlooks/tscup": "^0.1.2",
-    "@types/react": "^19.0.2",
-    "@types/react-dom": "^19.0.2",
+    "@types/node": "^22.13.5",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "typescript": "^5.7.2",
-    "vite": "^6.0.6"
+    "typescript": "^5.7.3",
+    "vite": "^6.2.0"
   }
 }
