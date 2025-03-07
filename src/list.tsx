@@ -1,52 +1,26 @@
-import React, {ComponentType, JSX, memo} from 'react'
-import {useVirtual, VirtualListCommonProps} from './core'
+import {useVirtual, UseVirtualParams} from './core'
+import {JSX} from 'react'
 
-export type VListComponents = {
-    Scroller?: ComponentType<any> | string
-    List?: ComponentType<any> | string
-    Item?: ComponentType<any> | string
+export interface VListProps extends Partial<JSX.IntrinsicElements['div']>, UseVirtualParams {
+
 }
 
-export interface VListProps extends VirtualListCommonProps, Omit<JSX.IntrinsicElements['div'], 'ref'> {
-    /** 自定义渲染元素，默认均为`div` */
-    components?: VListComponents
-}
-
-export const VList = memo(({
-    ref,
+export function VList({
     itemSize,
-    gridCount = 1,
-    totalCount = 0,
-    orientation = 'vertical',
-    bufferCount = 1,
-
+    totalCount,
     renderItemContent,
-    components = {},
     ...props
-}: VListProps) => {
+}: VListProps) {
     const {
-        Scroller = 'div',
-        List = 'div',
-        Item = 'div'
-    } = components as any
-
-    const {
-        scrollerRef, scrollerStyle,
-        wrapperRef, wrapperStyle,
-        renderedItems
+        scrollerStyle, scrollerRef, scrollOffset, bracing: {start, end}, renderedItems
     } = useVirtual({
-        ref,
         itemSize,
-        gridCount,
         totalCount,
-        orientation,
-        bufferCount,
-        renderItemContent,
-        itemComponent: Item
+        renderItemContent
     })
 
     return (
-        <Scroller
+        <div
             {...props}
             ref={scrollerRef}
             style={{
@@ -54,9 +28,15 @@ export const VList = memo(({
                 ...props.style
             }}
         >
-            <List ref={wrapperRef} style={wrapperStyle}>
+            <div
+                style={{
+                    paddingTop: start,
+                    paddingBottom: end,
+                    transform: `translateY(${scrollOffset}px)`
+                }}
+            >
                 {renderedItems}
-            </List>
-        </Scroller>
+            </div>
+        </div>
     )
-})
+}

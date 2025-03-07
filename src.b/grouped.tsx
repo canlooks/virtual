@@ -11,6 +11,7 @@ export type GroupedVListComponents = {
 export interface GroupedVListProps extends VirtualGroupedCommonProps, Omit<JSX.IntrinsicElements['div'], 'ref'> {
     /** 自定义渲染元素，默认均为`div` */
     components?: GroupedVListComponents
+    wrapperProps?: JSX.IntrinsicElements['div']
 }
 
 export function GroupedVList({
@@ -35,7 +36,7 @@ export function GroupedVList({
 
     const {
         scrollerRef, scrollerStyle,
-        wrapperRef, wrapperStyle,
+        wrapperRef, strut: {start, end},
         renderedItems
     } = useVirtual({
         mode: 'group',
@@ -51,6 +52,7 @@ export function GroupedVList({
         itemComponent: Item
     })
 
+    const isVertical = orientation === 'vertical'
 
     return (
         <Scroller
@@ -61,7 +63,14 @@ export function GroupedVList({
                 ...props.style
             }}
         >
-            <List ref={wrapperRef} style={wrapperStyle}>
+            <List
+                ref={wrapperRef}
+                style={{
+                    boxSizing: 'border-box',
+                    [isVertical ? 'paddingTop' : 'paddingLeft']: start,
+                    [isVertical ? 'paddingBottom' : 'paddingBottom']: end
+                }}
+            >
                 {renderedItems}
             </List>
         </Scroller>

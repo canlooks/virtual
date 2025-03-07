@@ -1,4 +1,4 @@
-import React, {ComponentType, memo, ReactNode} from 'react'
+import React, {ComponentType, JSX, memo, ReactNode} from 'react'
 import {useVirtual, VirtualListCommonProps} from './core'
 
 export type VTableComponents = {
@@ -8,6 +8,12 @@ export type VTableComponents = {
     Table?: ComponentType<any> | string
     /** 默认为`<tr>` */
     Row?: ComponentType<any> | string
+    /** 默认为`<thead>` */
+    TableHead?: ComponentType<any> | string
+    /** 默认为`<tbody>` */
+    TableBody?: ComponentType<any> | string
+    /** 默认为`<tfoot>` */
+    TableFoot?: ComponentType<any> | string
 }
 
 export interface VTableProps extends Omit<VirtualListCommonProps, 'itemSize' | 'orientation'>,
@@ -25,6 +31,7 @@ export interface VTableProps extends Omit<VirtualListCommonProps, 'itemSize' | '
     /** 表尾，包裹在`<tfoot>`元素内，通常传递`<tr>`元素 */
     footer?: ReactNode
     components?: VTableComponents
+    tableProps?: JSX.IntrinsicElements['table']
 }
 
 export const VTable = memo(({
@@ -37,17 +44,21 @@ export const VTable = memo(({
     header,
     footer,
     components = {},
+    tableProps,
     ...props
 }: VTableProps) => {
     const {
         Scroller = 'div',
         Table = 'table',
-        Row = 'tr'
+        Row = 'tr',
+        TableHead = 'thead',
+        TableBody = 'tbody',
+        TableFoot = 'tfoot'
     } = components as any
 
     const {
         scrollerRef, scrollerStyle,
-        wrapperRef, wrapperStyle,
+        wrapperRef, strut: {start, end},
         renderedItems
     } = useVirtual({
         ref,
@@ -67,23 +78,42 @@ export const VTable = memo(({
                 ...props.style
             }}
         >
-            <div ref={wrapperRef} style={wrapperStyle}>
-                <Table style={{borderSpacing: 0, overflowAnchor: 'none'}}>
-                    {!!header &&
-                        <thead>
+            <Table
+                {...tableProps}
+                ref={wrapperRef}
+                style={{
+                    borderSpacing: 0,
+                    ...tableProps?.style
+                }}
+            >
+                {!!header &&
+                    <TableHead>
                         {header}
-                        </thead>
-                    }
-                    <tbody>
+                    </TableHead>
+                }
+                <TableBody>
+                    <tr>
+                        <td style={{
+                            height: start,
+                            border: 0,
+                            padding: 0
+                        }}/>
+                    </tr>
                     {renderedItems}
-                    </tbody>
-                    {!!footer &&
-                        <tfoot>
+                    <tr>
+                        <td style={{
+                            height: end,
+                            border: 0,
+                            padding: 0
+                        }}/>
+                    </tr>
+                </TableBody>
+                {!!footer &&
+                    <TableFoot>
                         {footer}
-                        </tfoot>
-                    }
-                </Table>
-            </div>
+                    </TableFoot>
+                }
+            </Table>
         </Scroller>
     )
 })
