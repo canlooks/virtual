@@ -40,6 +40,7 @@ function App() {
                             }}
                         >
                             <p><strong>{user.name}</strong></p>
+                            <div>size: {user.size}</div>
                             <div>{user.description}</div>
                         </div>
                     )
