@@ -7,7 +7,7 @@ createRoot(document.getElementById('app')!).render(<App/>)
 function App() {
     const users = useMemo(() => {
         // return Array.from({length: 640_000}, (_, index) => ({
-        return Array.from({length: 400_000}, (_, index) => ({
+        return Array.from({length: 100_000}, (_, index) => ({
             name: `User ${index}`,
             bgColor: `hsl(${Math.random() * 360}, 70%, 80%)`,
             size: Math.floor(Math.random() * 100) + 100,
@@ -24,19 +24,21 @@ function App() {
         <>
             <VList
                 style={{height: 400}}
-                // itemSize={110}
+                // itemSize={150}
                 // gridCount={3}
-                totalCount={users.length}
+                // totalCount={users.length}
+                totalCount={0}
                 renderItemContent={index => {
+                    return null
                     const user = users[index]
                     return (
                         <div
                             style={{
                                 // height: '100%',
+                                height: user.size,
                                 backgroundColor: user.bgColor,
                                 padding: '0.5rem',
-                                boxSizing: 'border-box',
-                                height: `${user.size}px`
+                                boxSizing: 'border-box'
                             }}
                         >
                             <p><strong>{user.name}</strong></p>

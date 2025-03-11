@@ -12,7 +12,8 @@ export function VList({
     ...props
 }: VListProps) {
     const {
-        scrollerStyle, scrollerRef, scrollOffset, bracing: {start, end}, renderedItems
+        scrollerStyle, scrollerRef, containerRef, scrollOffset,
+        bracing: {start, end}, renderedItems
     } = useVirtual({
         itemSize,
         totalCount,
@@ -29,10 +30,11 @@ export function VList({
             }}
         >
             <div
+                ref={containerRef}
                 style={{
                     paddingTop: start,
                     paddingBottom: end,
-                    transform: `translateY(${scrollOffset}px)`
+                    transform: scrollOffset ? `translateY(${scrollOffset}px)` : void 0
                 }}
             >
                 {renderedItems}
