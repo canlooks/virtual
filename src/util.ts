@@ -1,4 +1,4 @@
-import {Dispatch, RefObject, SetStateAction, useCallback, useRef, useState} from 'react'
+import {Dispatch, Ref, RefObject, SetStateAction, useCallback, useRef, useState} from 'react'
 
 /**
  * 将某个值使用ref同步，主要用于对付组件的闭包问题
@@ -26,4 +26,22 @@ export function useSyncState(initialState?: any): [RefObject<any>, Dispatch<SetS
             synState.current !== newState && setState(synState.current = newState)
         }, [])
     ]
+}
+
+/**
+ * 克隆Ref
+ * @param refs
+ */
+export function cloneRef<T>(...refs: (Ref<T> | undefined)[]): (ref: T | null) => void {
+    return (r: T | null) => {
+        refs.forEach(ref => {
+            if (ref) {
+                if (typeof ref === 'function') {
+                    ref(r)
+                } else {
+                    ref.current = r
+                }
+            }
+        })
+    }
 }

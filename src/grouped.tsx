@@ -1,52 +1,55 @@
 import {useVirtual} from './core'
-import {JSX, memo} from 'react'
-import {CommonSlotProps, CommonVirtualProps, Obj, SlotComponent} from './types'
+import React, {JSX} from 'react'
+import {CommonGroupedProps, CommonSlotProps, Obj, SlotComponent} from './types'
 
-export interface VListSlotProps extends CommonSlotProps {
+export interface GroupedVListSlotProps extends CommonSlotProps {
     list?: Obj
+    groupTitle?: Obj
 }
 
-export interface VListProps extends Omit<JSX.IntrinsicElements['div'], 'ref'>, Partial<CommonVirtualProps> {
+export interface GroupedVListProps extends Omit<JSX.IntrinsicElements['div'], 'ref'>, Partial<CommonGroupedProps> {
     /** 自定义渲染元素，默认均为`div` */
-    slots?: { [P in keyof VListSlotProps]?: SlotComponent }
-    slotProps?: VListSlotProps
-    gridCount?: number
+    slots?: { [P in keyof GroupedVListSlotProps]?: SlotComponent }
+    slotProps?: GroupedVListSlotProps
 }
 
-export const VList = memo(({
+export function GroupedVList({
     slots = {},
     slotProps = {},
-    /** 默认为`1`，大于`1`时采用网格布局。例如{@link orientation}为`vertical`时，`gridCount`表示列数 */
-    gridCount = 1,
     itemSize,
-    totalCount,
+    groupedCounts,
     bufferCount,
     renderItemContent,
+    renderGroupTitleContent,
     orientation,
     onRangeChange,
     ...props
-}: VListProps) => {
+}: GroupedVListProps) {
     const {
         scroller: Scroller = 'div',
         list: List = 'div',
+        groupTitle: GroupTitle = 'div',
         item: Item = 'div'
-    } = slots
+    } = slots as any
 
     const {
         scrollerStyle, scrollerRef, translate,
         fill: {start, end}, renderedItems
     } = useVirtual({
-        mode: 'list',
+        mode: 'group',
         ref: props.ref,
         itemSize,
-        totalCount,
-        gridCount,
+        totalCount: void 0,
+        groupedCounts,
         bufferCount,
         renderItemContent,
+        renderGroupTitleContent,
         orientation,
         onRangeChange,
         itemComponent: Item,
-        itemProps: slotProps.item
+        itemProps: slotProps.item,
+        groupTitleComponent: GroupTitle,
+        groupTitleProps: slotProps.groupTitle
     })
 
     const isVertical = orientation !== 'horizontal'
@@ -67,12 +70,6 @@ export const VList = memo(({
                     [isVertical ? 'paddingTop' : 'paddingLeft']: start,
                     [isVertical ? 'paddingBottom' : 'paddingBottom']: end,
                     transform: translate ? `${isVertical ? 'translateY' : 'translateX'}(${translate}px)` : void 0,
-                    ...gridCount > 1 && {
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        [isVertical ? 'alignItems' : 'justifyContent']: 'flex-start',
-                        flexDirection: isVertical ? 'row' : 'column',
-                    },
                     ...slotProps.list?.style
                 }}
             >
@@ -80,4 +77,4 @@ export const VList = memo(({
             </List>
         </Scroller>
     )
-})
+}
