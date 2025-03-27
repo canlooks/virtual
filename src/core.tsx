@@ -5,7 +5,8 @@ import {cloneRef, useSync, useSyncState} from './util'
 
 const scrollerStyle: CSSProperties = {
     position: 'relative',
-    WebkitOverflowScrolling: 'touch'
+    WebkitOverflowScrolling: 'touch',
+    willChange: 'scroll-position'
 }
 
 const verticalScrollerStyle: CSSProperties = {
@@ -439,9 +440,7 @@ export function useVirtual({
         if (!scroller) {
             return
         }
-        const scroll = () => {
-            computeRange()
-        }
+        const scroll = () => computeRange()
         scroller.addEventListener('scroll', scroll, {passive: true})
 
         return () => {
@@ -530,6 +529,7 @@ export function useVirtual({
                 max = mid - 1
             }
         }
+
         return {
             exact: false,
             groupIndex: Math.max(

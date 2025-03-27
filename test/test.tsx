@@ -27,7 +27,7 @@ function App() {
             {/*<VList*/}
             {/*    style={{height: 400}}*/}
             {/*    itemSize={150}*/}
-            {/*    gridCount={3}*/}
+            {/*    // gridCount={3}*/}
             {/*    totalCount={totalCount}*/}
             {/*    // totalCount={0}*/}
             {/*    renderItemContent={index => {*/}
@@ -35,8 +35,8 @@ function App() {
             {/*        return (*/}
             {/*            <div*/}
             {/*                style={{*/}
-            {/*                    // height: '100%',*/}
-            {/*                    height: user.size,*/}
+            {/*                    height: '100%',*/}
+            {/*                    // height: user.size,*/}
             {/*                    backgroundColor: user.bgColor,*/}
             {/*                    padding: '0.5rem',*/}
             {/*                    boxSizing: 'border-box'*/}

@@ -52,7 +52,7 @@
   "scripts": {
     "clean": "npx shx rm -rf dist",
     "build": "npm run clean && tscup",
-    "test:browser": "vite -c test/vite.config.mts",
+    "test:browser": "vite -c test/vite.config.mts --host",
     "test:unit": "npx ts-node test/unit.ts",
     "test:build": "vite build -c test/vite.config.mts"
   },
