@@ -1,8 +1,19 @@
 import {createRoot} from 'react-dom/client'
-import {useMemo, useState} from 'react'
-import {VList, VTable, GroupedVList} from '../src'
+import {forwardRef, useMemo, useState} from 'react'
+import {VList, VTable, GroupedVList, VTableProps} from '../src'
+import {Table, TableBody, TableContainer, TableHead, TableRow} from '@mui/material'
 
 createRoot(document.getElementById('app')!).render(<App/>)
+
+const virtualTableSlots: VTableProps['slots'] = {
+    scroller: TableContainer,
+    table: (props: any) => (
+        <Table {...props} stickyHeader size="small"/>
+    ),
+    thead: TableHead,
+    row: TableRow,
+    tbody: TableBody
+}
 
 function App() {
     const users = useMemo(() => {
@@ -51,7 +62,8 @@ function App() {
             {/*/>*/}
             <VTable
                 style={{height: 400}}
-                rowHeight={100}
+                slots={virtualTableSlots}
+                rowHeight={34}
                 totalCount={users.length}
                 renderRowContent={index => {
                     const user = users[index]
