@@ -1,24 +1,23 @@
 import React, {JSX, memo, ReactNode} from 'react'
-import {CommonSlotProps, CommonVirtualProps, Obj, SlotComponent} from './types'
+import {CommonSlotProps, CommonVirtualProps, SlotsAndProps} from './types'
 import {useVirtual} from './core'
 
 export interface VTableSlotProps extends Omit<CommonSlotProps, 'item'> {
     /** 默认为`<table>` */
-    table?: Obj
+    table?: JSX.IntrinsicElements['table']
     /** 默认为`<tr>` */
     row?: CommonSlotProps['item']
     /** 默认为`<thead>` */
-    thead?: Obj
+    thead?: JSX.IntrinsicElements['thead']
     /** 默认为`<tbody>` */
-    tbody?: Obj
+    tbody?: JSX.IntrinsicElements['tbody']
     /** 默认为`<tfoot>` */
-    tfoot?: Obj
+    tfoot?: JSX.IntrinsicElements['tfoot']
 }
 
 export interface VTableProps extends Omit<JSX.IntrinsicElements['table'], 'ref'>,
-    Omit<Partial<CommonVirtualProps>, 'itemSize' | 'renderItemContent' | 'orientation'> {
-    slots?: { [P in keyof VTableSlotProps]?: SlotComponent }
-    slotProps?: VTableSlotProps
+    Omit<Partial<CommonVirtualProps>, 'itemSize' | 'renderItemContent' | 'orientation'>,
+    SlotsAndProps<VTableSlotProps> {
     /** 固定行高，可获得更好的性能 */
     rowHeight?: number
     /**

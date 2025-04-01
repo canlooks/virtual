@@ -1,7 +1,7 @@
 import {createRoot} from 'react-dom/client'
 import {forwardRef, useMemo, useState} from 'react'
 import {VList, VTable, GroupedVList, VTableProps} from '../src'
-import {Table, TableBody, TableContainer, TableHead, TableRow} from '@mui/material'
+import {Table, TableBody, TableContainer, TableHead, TableRow, TextField} from '@mui/material'
 
 createRoot(document.getElementById('app')!).render(<App/>)
 
@@ -35,6 +35,17 @@ function App() {
 
     return (
         <>
+            <TextField
+                component=
+                slots={{
+                    root: 'input'
+                }}
+                slotProps={{
+                    root: {
+                        value: ''
+                    }
+                }}
+            />
             {/*<VList*/}
             {/*    style={{height: 400}}*/}
             {/*    itemSize={150}*/}

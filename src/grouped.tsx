@@ -1,16 +1,15 @@
 import {useVirtual} from './core'
 import React, {JSX} from 'react'
-import {CommonGroupedProps, CommonSlotProps, Obj, SlotComponent} from './types'
+import {CommonGroupedProps, CommonSlotProps, DivProps, SlotsAndProps} from './types'
 
 export interface GroupedVListSlotProps extends CommonSlotProps {
-    list?: Obj
-    groupTitle?: Obj
+    list?: DivProps
+    groupTitle?: DivProps
 }
 
-export interface GroupedVListProps extends Omit<JSX.IntrinsicElements['div'], 'ref'>, Partial<CommonGroupedProps> {
-    /** 自定义渲染元素，默认均为`div` */
-    slots?: { [P in keyof GroupedVListSlotProps]?: SlotComponent }
-    slotProps?: GroupedVListSlotProps
+export interface GroupedVListProps extends Omit<JSX.IntrinsicElements['div'], 'ref'>,
+    Partial<CommonGroupedProps>,
+    SlotsAndProps<GroupedVListSlotProps> {
 }
 
 export function GroupedVList({

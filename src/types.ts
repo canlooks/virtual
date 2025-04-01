@@ -1,8 +1,6 @@
-import {ComponentType, ReactNode, Ref} from 'react'
+import {ElementType, JSX, ReactNode, Ref} from 'react'
 
 export type Obj = Record<any, any>
-
-export type SlotComponent = ComponentType<any> | string
 
 export type ScrollToIndexOptions = {
     index: number
@@ -53,13 +51,24 @@ export interface UseVirtualParams extends Omit<CommonVirtualProps, 'renderItemCo
     mode: 'list' | 'group'
     renderItemContent?(itemIndex: number, groupIndex?: number): ReactNode
     gridCount?: number
-    itemComponent: SlotComponent | undefined
+    itemComponent: ElementType | undefined
     itemProps: Obj | ((index: number) => Obj) | undefined
-    groupTitleComponent?: SlotComponent
+    groupTitleComponent?: ElementType
     groupTitleProps?: Obj | ((groupIndex: number) => Obj) | undefined
 }
 
+export type DivProps = JSX.IntrinsicElements['div']
+
+export type SlotsAndProps<Default extends Record<string, any>> = {
+    slots?: {
+        [P in keyof Default]?: ElementType
+    }
+    slotProps?: {
+        [P in keyof Default]?: Default[P]
+    }
+}
+
 export type CommonSlotProps = {
-    scroller?: Obj
-    item?: Obj | ((index: number) => Obj)
+    scroller: DivProps
+    item: Obj | ((index: number) => Obj)
 }
