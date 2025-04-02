@@ -1,4 +1,4 @@
-import React, {JSX, memo, ReactNode} from 'react'
+import {JSX, memo, ReactNode} from 'react'
 import {CommonSlotProps, CommonVirtualProps, SlotsAndProps} from './types'
 import {useVirtual} from './core'
 
@@ -15,8 +15,7 @@ export interface VTableSlotProps extends Omit<CommonSlotProps, 'item'> {
     tfoot?: JSX.IntrinsicElements['tfoot']
 }
 
-export interface VTableProps extends Omit<JSX.IntrinsicElements['table'], 'ref'>,
-    Omit<Partial<CommonVirtualProps>, 'itemSize' | 'renderItemContent' | 'orientation'>,
+export interface VTableProps extends Omit<CommonVirtualProps, 'itemSize' | 'renderItemContent' | 'orientation'>,
     SlotsAndProps<VTableSlotProps> {
     /** 固定行高，可获得更好的性能 */
     rowHeight?: number

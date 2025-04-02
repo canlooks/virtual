@@ -4,9 +4,9 @@ import {flushSync} from 'react-dom'
 import {cloneRef, useSync, useSyncState} from './util'
 
 const scrollerStyle: CSSProperties = {
+    overflowAnchor: 'none',
     position: 'relative',
-    WebkitOverflowScrolling: 'touch',
-    willChange: 'scroll-position'
+    WebkitOverflowScrolling: 'touch'
 }
 
 const verticalScrollerStyle: CSSProperties = {
@@ -135,14 +135,16 @@ export function useVirtual({
             : Math.max(start - bufferCount - 1, 0)
         end = Math.min(end + bufferCount, totalGridCount - 1)
 
+        if (start === rangeStart.current && end === rangeEnd.current) {
+            return
+        }
+
         const fn = () => {
             onRangeChange?.(start, end)
             setRangeStart(start)
             setRangeEnd(end)
         }
         noFlushSync ? fn() : flushSync(fn)
-
-        return {start, end}
     }
 
     const offsetSize = isVertical ? 'offsetHeight' : 'offsetWidth'
@@ -309,7 +311,7 @@ export function useVirtual({
             // 从预估位置开始顺序查找
             end = sequentialSearch(computedPosition + scrollerSize, start + estimatedCount - 1)
         }
-        console.log(start, end)
+
         return {start, end}
     }
 
@@ -478,7 +480,7 @@ export function useVirtual({
         return isSizeFixed
             ? Math.max((totalGridCount - 1 - rangeEnd.current), 0) * itemSize
             : accumulatedSizes.current.length && rangeEnd.current < totalGridCount
-                ? (getTotalSize() - getAccumulated(rangeEnd.current))
+                ? getTotalSize() - getAccumulated(rangeEnd.current)
                 : 0
     }, [rangeEnd.current, totalGridCount, itemSize])
 
@@ -554,7 +556,6 @@ export function useVirtual({
                         {...p}
                         ref={cloneRef(p?.ref, setItemResizeObserver)}
                         style={{
-                            overflowAnchor: 'none',
                             [isVertical ? 'height' : 'width']: itemSize,
                             ...gridCount > 1 && {
                                 [isVertical ? 'width' : 'height']: `${100 / gridCount}%`

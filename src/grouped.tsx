@@ -1,5 +1,4 @@
 import {useVirtual} from './core'
-import React, {JSX} from 'react'
 import {CommonGroupedProps, CommonSlotProps, DivProps, SlotsAndProps} from './types'
 
 export interface GroupedVListSlotProps extends CommonSlotProps {
@@ -7,9 +6,7 @@ export interface GroupedVListSlotProps extends CommonSlotProps {
     groupTitle?: DivProps
 }
 
-export interface GroupedVListProps extends Omit<JSX.IntrinsicElements['div'], 'ref'>,
-    Partial<CommonGroupedProps>,
-    SlotsAndProps<GroupedVListSlotProps> {
+export interface GroupedVListProps extends CommonGroupedProps, SlotsAndProps<GroupedVListSlotProps> {
 }
 
 export function GroupedVList({

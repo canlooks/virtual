@@ -20,17 +20,17 @@ export interface VirtualRef extends HTMLElement {
     scrollToIndex(options: ScrollToIndexOptions): void
 }
 
-export type CommonVirtualProps = {
-    ref: Ref<VirtualRef> | undefined
+export interface CommonVirtualProps extends Omit<JSX.IntrinsicElements['div'], 'ref'> {
+    ref?: Ref<VirtualRef> | undefined
     /** 固定元素的尺寸，可获得更好的性能 */
-    itemSize: number | undefined
-    totalCount: number | undefined
+    itemSize?: number | undefined
+    totalCount?: number | undefined
     /** 缓冲数量，默认为`1`，通常无需修改 */
-    bufferCount: number | undefined
-    renderItemContent: ((index: number) => ReactNode) | undefined
+    bufferCount?: number | undefined
+    renderItemContent?: ((index: number) => ReactNode) | undefined
     /** 滚动方向，默认为`vertical` */
-    orientation: 'vertical' | 'horizontal' | undefined
-    onRangeChange: ((start: number, end: number) => void) | undefined
+    orientation?: 'vertical' | 'horizontal' | undefined
+    onRangeChange?: ((start: number, end: number) => void) | undefined
 }
 
 export interface CommonGroupedProps extends Omit<CommonVirtualProps, 'totalCount' | 'renderItemContent'> {
@@ -64,7 +64,7 @@ export type SlotsAndProps<Default extends Record<string, any>> = {
         [P in keyof Default]?: ElementType
     }
     slotProps?: {
-        [P in keyof Default]?: Default[P]
+        [P in keyof Default]?: Default[P] & Obj
     }
 }
 

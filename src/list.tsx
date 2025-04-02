@@ -1,15 +1,12 @@
 import {useVirtual} from './core'
-import {JSX, memo} from 'react'
+import {memo} from 'react'
 import {CommonSlotProps, CommonVirtualProps, DivProps, SlotsAndProps} from './types'
 
 export interface VListSlotProps extends CommonSlotProps {
     list?: DivProps
 }
 
-export interface VListProps extends
-    Omit<JSX.IntrinsicElements['div'], 'ref'>,
-    Partial<CommonVirtualProps>,
-    SlotsAndProps<VListSlotProps> {
+export interface VListProps extends CommonVirtualProps, SlotsAndProps<VListSlotProps> {
     /** 自定义渲染元素，默认均为`div` */
     gridCount?: number
 }
