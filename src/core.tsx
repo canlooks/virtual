@@ -99,14 +99,14 @@ export function useVirtual({
         return itemCount + groupedCounts.length
     }, [totalCount, groupedCounts, mode])
 
-    const totalGridCount = useMemo(() => {
+    const totalRowCount = useMemo(() => {
         return gridCount > 1 ? Math.ceil(totalItemCount / gridCount) : totalItemCount
     }, [totalItemCount, gridCount])
 
     const isSizeFixed = !!itemSize && groupTitleSize === itemSize
 
     const sync = useSync({
-        totalItemCount, totalGridCount, bufferCount, gridCount,
+        totalItemCount, totalRowCount, bufferCount, gridCount,
         itemSize, isSizeFixed, onRangeChange
     })
 
@@ -116,33 +116,39 @@ export function useVirtual({
     const scrollRatio = useRef(1)
     const fillRatio = useRef(1)
 
-    const [rangeStart, setRangeStart] = useSyncState(0)
-    const [rangeEnd, setRangeEnd] = useSyncState(isSizeFixed || !totalGridCount ? -1 : 0)
+    const [rowStart, setRowStart] = useSyncState(0)
+    const [rowEnd, setRowEnd] = useSyncState(isSizeFixed || !totalRowCount ? -1 : 0)
     const [scrollOffset, setScrollOffset] = useState(0)
 
-    const gridItemStart = useMemo(() => {
-        return rangeStart.current * gridCount
-    }, [rangeStart.current, gridCount])
+    const rangeStart = useMemo(() => {
+        return rowStart.current * gridCount
+    }, [rowStart.current, gridCount])
 
-    const gridItemEnd = useMemo(() => {
-        return Math.min(rangeEnd.current * gridCount, totalItemCount)
-    }, [rangeEnd.current, totalItemCount, gridCount])
+    const calRangeEnd = (rowEnd: number) => {
+        return gridCount > 1
+            ? Math.min((rowEnd + 1) * gridCount, sync.current.totalItemCount - 1)
+            : rowEnd
+    }
 
-    const setRange = (start: number, end: number, noFlushSync?: boolean) => {
-        const {totalGridCount, bufferCount, onRangeChange} = sync.current
+    const rangeEnd = useMemo(() => {
+        return calRangeEnd(rowEnd.current)
+    }, [rowEnd.current, totalItemCount, gridCount])
+
+    const setRowRange = (start: number, end: number, noFlushSync?: boolean) => {
+        const {totalRowCount, bufferCount, onRangeChange} = sync.current
         start = mode === 'list'
             ? Math.max(start - bufferCount, 0)
             : Math.max(start - bufferCount - 1, 0)
-        end = Math.min(end + bufferCount, totalGridCount - 1)
+        end = Math.min(end + bufferCount, totalRowCount - 1)
 
-        if (start === rangeStart.current && end === rangeEnd.current) {
+        if (start === rowStart.current && end === rowEnd.current) {
             return
         }
 
         const fn = () => {
-            onRangeChange?.(start, end)
-            setRangeStart(start)
-            setRangeEnd(end)
+            onRangeChange?.(start * gridCount, calRangeEnd(end))
+            setRowStart(start)
+            setRowEnd(end)
         }
         noFlushSync ? fn() : flushSync(fn)
     }
@@ -154,8 +160,9 @@ export function useVirtual({
         const scroller = scrollerRef.current
         if (scroller) {
             return {
-                scrollerSize: scroller?.[isVertical ? 'clientHeight' : 'clientWidth'],
-                scrollPosition: scroller?.[isVertical ? 'scrollTop' : 'scrollLeft'],
+                scrollerSize: scroller[isVertical ? 'clientHeight' : 'clientWidth'],
+                contentSize: scroller[isVertical ? 'scrollHeight' : 'scrollWidth'],
+                scrollPosition: scroller[isVertical ? 'scrollTop' : 'scrollLeft'],
             }
         }
     }
@@ -169,7 +176,7 @@ export function useVirtual({
         if (!isSizeFixed || !scrollerRef.current) {
             return
         }
-        const contentSize = itemSize * totalGridCount
+        const contentSize = itemSize * totalRowCount
         if (contentSize > MAX_DOM_SIZE) {
             const {scrollerSize} = getScrollerInfo()!
             scrollRatio.current = (contentSize - scrollerSize) / (MAX_DOM_SIZE - scrollerSize)
@@ -181,14 +188,14 @@ export function useVirtual({
         }
     }
 
-    useEffect(updateRatioWithFixed, [totalGridCount, itemSize, bufferCount])
+    useEffect(updateRatioWithFixed, [totalRowCount, itemSize, bufferCount])
 
-    const computeRangeWithFixed = () => {
-        const {itemSize, totalGridCount} = sync.current
+    const computeRowRangeWithFixed = () => {
+        const {itemSize, totalRowCount} = sync.current
         const {scrollPosition, scrollerSize} = getScrollerInfo()!
         let computedPosition = scrollPosition
 
-        const overflowed = itemSize! * totalGridCount > MAX_DOM_SIZE
+        const overflowed = itemSize! * totalRowCount > MAX_DOM_SIZE
         if (overflowed) {
             computedPosition = Math.min(scrollPosition, MAX_DOM_SIZE - scrollerSize)
             computedPosition *= scrollRatio.current
@@ -223,7 +230,7 @@ export function useVirtual({
         let isSizeChanged = false
 
         for (let i = 0; i < itemLen; i++) {
-            const cacheIndex = gridItemStart + i
+            const cacheIndex = rangeStart + i
             const cachedSize = cachedSizes.current[cacheIndex]
             const currentSize = items[i][offsetSize]
             if (cachedSize === currentSize) {
@@ -245,16 +252,16 @@ export function useVirtual({
             estimatedWeight.current += count
         }
         isSizeChanged && updateRatioWithEstimated()
-        // 非首次渲染，需要再次检查渲染元素是否占满视口
-        if (!isInitial && gridItemEnd < sync.current.totalGridCount - 1) {
+        // 非首次渲染，且未滚动至底部，需要再次检查渲染元素是否占满视口
+        if (!isInitial && rowEnd.current < sync.current.totalRowCount - 1) {
             const {[offsetPosition]: itemPosition, [offsetSize]: itemSize} = items[itemLen - 1]
             const {scrollPosition, scrollerSize} = getScrollerInfo()!
             const scrollEndPosition = scrollPosition + scrollerSize
             const diff = scrollEndPosition - (itemPosition + itemSize)
             if (diff > 0) {
                 const estimatedCount = Math.ceil(diff / itemSize)
-                const end = sequentialSearch(scrollEndPosition, gridItemEnd + estimatedCount)
-                setRange(gridItemStart, end, true)
+                const end = sequentialSearch(scrollEndPosition, rangeEnd + estimatedCount)
+                setRowRange(rangeStart, end, true)
             }
         }
     }
@@ -265,15 +272,15 @@ export function useVirtual({
             const {scrollerSize} = getScrollerInfo()!
             scrollRatio.current = (contentSize - scrollerSize) / (MAX_DOM_SIZE - scrollerSize)
 
-            const {totalGridCount} = sync.current
+            const {totalRowCount} = sync.current
             const {length: accLen} = accumulatedSizes.current
             const estimatedCount = Math.ceil(scrollerSize / estimatedItemSize.current)
             let lastPageContentSize
 
-            if (accLen === totalGridCount) {
+            if (accLen === totalRowCount) {
                 const lastPageStartIndex = sequentialSearch(
                     contentSize - scrollerSize,
-                    totalGridCount - estimatedCount - 1
+                    totalRowCount - estimatedCount - 1
                 )
                 lastPageContentSize = accumulatedSizes.current[accLen - 1] - accumulatedSizes.current[lastPageStartIndex - 1]
             } else {
@@ -286,7 +293,7 @@ export function useVirtual({
         }
     }
 
-    const computeRangeWithEstimated = () => {
+    const computeRowRangeWithEstimated = () => {
         let lastAccIndex = accumulatedSizes.current.length - 1
         const {scrollPosition, scrollerSize} = getScrollerInfo()!
         let computedPosition = scrollPosition
@@ -305,7 +312,7 @@ export function useVirtual({
             : binarySearch(computedPosition, 0, lastAccIndex - 1)
 
         let end = -1
-        // 特殊情况，当totalGridCount为0，首次计算时无estimatedItemSize
+        // 特殊情况，当totalRowCount为0，首次计算时无estimatedItemSize
         if (estimatedItemSize.current) {
             const estimatedCount = Math.ceil(scrollerSize / estimatedItemSize.current)
             // 从预估位置开始顺序查找
@@ -316,9 +323,9 @@ export function useVirtual({
     }
 
     const sequentialSearch = (targetPosition: number, fromIndex: number) => {
-        const {totalGridCount} = sync.current
+        const {totalRowCount} = sync.current
         if (getAccumulated(fromIndex) <= targetPosition) {
-            while (++fromIndex < totalGridCount && getAccumulated(fromIndex) <= targetPosition) {
+            while (++fromIndex < totalRowCount && getAccumulated(fromIndex) <= targetPosition) {
             }
         } else {
             while (--fromIndex >= 0 && getAccumulated(fromIndex) > targetPosition) {
@@ -368,7 +375,7 @@ export function useVirtual({
     }
 
     const getTotalSize = () => {
-        return getItemPositionEnd(sync.current.totalGridCount)
+        return getItemPositionEnd(sync.current.totalRowCount)
     }
 
     const getItemPositionEnd = (index: number) => {
@@ -389,36 +396,68 @@ export function useVirtual({
      * 通用部分
      */
 
-    const computeRange = (noFlushSync?: boolean) => {
+    const computeRowRange = (noFlushSync?: boolean) => {
         if (!scrollerRef.current) {
             return
         }
         const {start, end} = sync.current.isSizeFixed
-            ? computeRangeWithFixed()
-            : computeRangeWithEstimated()
-        setRange(start, end, noFlushSync)
+            ? computeRowRangeWithFixed()
+            : computeRowRangeWithEstimated()
+        setRowRange(start, end, noFlushSync)
     }
 
     useMemo(() => {
-        computeRange(true)
+        computeRowRange(true)
     }, [itemSize])
 
-    const itemResize = useRef<ResizeObserver>(null)
+    const suppressResize = useRef(false)
+
+    useMemo(() => {
+        if (!scrollerRef.current) {
+            return
+        }
+        if (totalRowCount <= rowEnd.current) {
+            // 数量变少导致rowEnd超过最大范围
+            const {scrollerSize} = getScrollerInfo()!
+            const {isSizeFixed, itemSize} = sync.current
+
+            if (isSizeFixed) {
+                const onePageCount = Math.ceil(scrollerSize / itemSize!)
+                setRowRange(totalRowCount - onePageCount, totalRowCount - 1, true)
+            } else {
+                const estimatedCount = Math.ceil(scrollerSize / estimatedItemSize.current)
+                const start = sequentialSearch(
+                    getAccumulated(totalRowCount - 1) - scrollerSize,
+                    totalRowCount - estimatedCount - 1
+                )
+                setRowRange(start, totalRowCount - 1, true)
+            }
+        } else {
+            const {contentSize, scrollerSize} = getScrollerInfo()!
+            // 数量变化但内容未填满scroller，需要主动触发计算
+            if (contentSize <= scrollerSize) {
+                suppressResize.current = true
+                computeRowRange(true)
+            }
+        }
+    }, [totalRowCount])
+
+    const itemResizeObserver = useRef<ResizeObserver>(null)
 
     if (!isSizeFixed) {
-        itemResize.current ||= new ResizeObserver(() => {
+        itemResizeObserver.current ||= new ResizeObserver(() => {
             updateSizes()
         })
     }
 
     useEffect(() => () => {
-        itemResize.current?.disconnect()
+        itemResizeObserver.current?.disconnect()
     }, [isSizeFixed])
 
     const setItemResizeObserver = (r: HTMLElement | null) => {
         if (r) {
             itemRefs.current.push(r)
-            itemResize.current?.observe(r)
+            itemResizeObserver.current?.observe(r)
         }
     }
 
@@ -428,7 +467,12 @@ export function useVirtual({
             return
         }
         const scrollerResize = new ResizeObserver(() => {
-            computeRange()
+            if (suppressResize.current) {
+                // 若suppressResize.current为true，表示此次resize由数量变化造成，已在上方处理
+                suppressResize.current = false
+            } else {
+                computeRowRange()
+            }
         })
         scroller && scrollerResize.observe(scroller)
 
@@ -442,7 +486,9 @@ export function useVirtual({
         if (!scroller) {
             return
         }
-        const scroll = () => computeRange()
+        const scroll = () => {
+            computeRowRange()
+        }
         scroller.addEventListener('scroll', scroll, {passive: true})
 
         return () => {
@@ -450,39 +496,19 @@ export function useVirtual({
         }
     }, [])
 
-    useMemo(() => {
-        if (totalGridCount > gridItemEnd || !scrollerRef.current) {
-            return
-        }
-        const {scrollerSize} = getScrollerInfo()!
-        const {isSizeFixed, itemSize} = sync.current
-
-        if (isSizeFixed) {
-            const onePageCount = Math.ceil(scrollerSize / itemSize!)
-            setRange(totalGridCount - onePageCount, totalGridCount - 1, true)
-        } else {
-            const estimatedCount = Math.ceil(scrollerSize / estimatedItemSize.current)
-            const start = sequentialSearch(
-                getAccumulated(totalGridCount - 1) - scrollerSize,
-                totalGridCount - estimatedCount - 1
-            )
-            setRange(start, totalGridCount - 1, true)
-        }
-    }, [totalGridCount])
-
     const fillStart = useMemo(() => {
         return isSizeFixed
-            ? rangeStart.current * itemSize
-            : getAccumulated(rangeStart.current - 1)
-    }, [rangeStart.current, itemSize])
+            ? rowStart.current * itemSize
+            : getAccumulated(rowStart.current - 1)
+    }, [rowStart.current, itemSize])
 
     const fillEnd = useMemo(() => {
         return isSizeFixed
-            ? Math.max((totalGridCount - 1 - rangeEnd.current), 0) * itemSize
-            : accumulatedSizes.current.length && rangeEnd.current < totalGridCount
-                ? getTotalSize() - getAccumulated(rangeEnd.current)
+            ? Math.max((totalRowCount - 1 - rowEnd.current), 0) * itemSize
+            : accumulatedSizes.current.length && rowEnd.current < totalRowCount
+                ? getTotalSize() - getAccumulated(rowEnd.current)
                 : 0
-    }, [rangeEnd.current, totalGridCount, itemSize])
+    }, [rowEnd.current, totalRowCount, itemSize])
 
     const translate = useMemo(() => {
         if (!scrollOffset || !fillEnd) {
@@ -548,7 +574,7 @@ export function useVirtual({
         itemRefs.current = []
         const items: ReactNode[] = []
         if (mode === 'list') {
-            for (let i = gridItemStart; i <= gridItemEnd; i++) {
+            for (let i = rangeStart; i <= rangeEnd; i++) {
                 const p = typeof itemProps === 'function' ? itemProps(i) : itemProps
                 items.push(
                     <ItemComponent
@@ -569,7 +595,7 @@ export function useVirtual({
             }
         } else {
             // mode === 'group'
-            for (let i = gridItemStart; i <= gridItemEnd; i++) {
+            for (let i = rangeStart; i <= rangeEnd; i++) {
                 const {groupIndex, exact} = getGroupIndex(i)
                 const fn = (isTitle = exact) => {
                     if (isTitle && !renderGroupTitleContent) {
@@ -605,13 +631,13 @@ export function useVirtual({
                     )
                 }
                 // 第一个元素如果不是标题，需要强制渲染该组标题
-                i === gridItemStart && !exact
+                i === rangeStart && !exact
                     ? fn(true)
                     : fn()
             }
         }
         return items
-    }, [gridItemStart, gridItemEnd, renderItemContent, itemProps, groupTitleProps, gridCount, itemSize, groupTitleSize])
+    }, [rangeStart, rangeEnd, renderItemContent, itemProps, groupTitleProps, gridCount, itemSize, groupTitleSize])
 
     return {
         scrollerStyle: isVertical ? verticalScrollerStyle : horizontalScrollerStyle,

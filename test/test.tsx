@@ -1,7 +1,7 @@
 import {createRoot} from 'react-dom/client'
-import {forwardRef, useMemo, useState} from 'react'
-import {VList, VTable, GroupedVList, VTableProps} from '../src'
-import {Table, TableBody, TableContainer, TableHead, TableRow, TextField} from '@mui/material'
+import {useMemo, useState} from 'react'
+import {VTable, VTableProps} from '../src'
+import {Table, TableBody, TableContainer, TableHead, TableRow} from '@mui/material'
 
 createRoot(document.getElementById('app')!).render(<App/>)
 
@@ -25,27 +25,11 @@ function App() {
             description: `Description for user ${index}`
         }))
     }, [])
-    const groupedCounts = useMemo(() => {
-        return Array.from({length: 100}, () => {
-            return Math.floor(Math.random() * 10) + 1
-        })
-    }, [])
 
     const [totalCount, setTotalCount] = useState(users.length)
 
     return (
         <>
-            <TextField
-                component=
-                slots={{
-                    root: 'input'
-                }}
-                slotProps={{
-                    root: {
-                        value: ''
-                    }
-                }}
-            />
             {/*<VList*/}
             {/*    style={{height: 400}}*/}
             {/*    itemSize={150}*/}
@@ -71,11 +55,16 @@ function App() {
             {/*        )*/}
             {/*    }}*/}
             {/*/>*/}
+            <button onClick={() => setTotalCount(0)}>button0</button>
+            <button onClick={() => setTotalCount(2)}>button2</button>
+            <button onClick={() => setTotalCount(5)}>button5</button>
+            <button onClick={() => setTotalCount(20)}>button20</button>
+            <button onClick={() => setTotalCount(200)}>button200</button>
             <VTable
                 style={{height: 400}}
                 slots={virtualTableSlots}
                 rowHeight={34}
-                totalCount={users.length}
+                totalCount={totalCount}
                 renderRowContent={index => {
                     const user = users[index]
                     return (
