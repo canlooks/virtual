@@ -31,8 +31,8 @@ export const VList = memo(({
     } = slots
 
     const {
-        scrollerStyle, scrollerRef, translate,
-        fill: {start, end}, renderedItems
+        scrollerRef, scrollerStyle, scrollOffset,
+        fillStart, fillEnd, renderedItems
     } = useVirtual({
         mode: 'list',
         ref: props.ref,
@@ -62,9 +62,9 @@ export const VList = memo(({
                 {...slotProps.list}
                 style={{
                     boxSizing: 'border-box',
-                    [isVertical ? 'paddingTop' : 'paddingLeft']: start,
-                    [isVertical ? 'paddingBottom' : 'paddingBottom']: end,
-                    transform: translate ? `${isVertical ? 'translateY' : 'translateX'}(${translate}px)` : void 0,
+                    [isVertical ? 'paddingTop' : 'paddingLeft']: fillStart,
+                    [isVertical ? 'paddingBottom' : 'paddingBottom']: fillEnd,
+                    transform: scrollOffset ? `${isVertical ? 'translateY' : 'translateX'}(${-scrollOffset}px)` : void 0,
                     ...gridCount > 1 && {
                         display: 'flex',
                         flexWrap: 'wrap',

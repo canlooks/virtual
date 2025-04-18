@@ -1,7 +1,7 @@
 import {CSSProperties, ReactNode, useEffect, useImperativeHandle, useMemo, useRef, useState} from 'react'
 import {ScrollToIndexOptions, UseVirtualParams, VirtualRef} from './types'
 import {flushSync} from 'react-dom'
-import {cloneRef, useSync, useSyncState} from './util'
+import {cloneRef, computeMaxDomSize, useSync, useSyncState} from './util'
 
 const scrollerStyle: CSSProperties = {
     overflowAnchor: 'none',
@@ -19,7 +19,7 @@ const horizontalScrollerStyle: CSSProperties = {
     ...scrollerStyle
 }
 
-export const MAX_DOM_SIZE = 32_000_000
+export const MAX_DOM_SIZE = computeMaxDomSize()
 
 export function useVirtual({
     ref,
@@ -54,28 +54,37 @@ export function useVirtual({
                     behavior,
                     offset = 0
                 } = typeof a === 'number' ? {index: a} : a
-                const targetStart = getItemPositionEnd(index - 1)
-                const targetEnd = getItemPositionEnd(index)
-                const {scrollPosition, scrollerSize} = getScrollerInfo()!
+                let targetStart: number
+                let targetEnd: number
+                const {scrollPosition, clientSize} = getScrollerInfo()!
+                const {isSizeFixed, itemSize} = sync.current
 
+                if (isSizeFixed) {
+                    targetStart = itemSize! * index
+                    targetEnd = targetStart + itemSize!
+                } else {
+                    // !isSizeFixed
+                    targetStart = getItemPositionEnd(index - 1)
+                    targetEnd = getItemPositionEnd(index)
+                }
                 if (align === 'nearest') {
-                    const scrollEndPosition = scrollPosition + scrollerSize
+                    const scrollEndPosition = scrollPosition + clientSize
                     const startDistance = Math.abs(targetStart - scrollPosition)
                     const endDistance = Math.abs(targetEnd - scrollEndPosition)
                     align = startDistance < endDistance ? 'start' : 'end'
                 }
 
-                let targetPosition
+                let targetPosition: number
                 switch (align) {
                     case 'start':
                         targetPosition = targetStart + offset
                         break
                     case 'end':
-                        targetPosition = targetEnd - scrollerSize - offset
+                        targetPosition = targetEnd - clientSize - offset
                         break
                     default:
                         // 'center'
-                        targetPosition = targetStart + (targetEnd - targetStart - scrollerSize) / 2
+                        targetPosition = targetStart + (targetEnd - targetStart - clientSize) / 2
                 }
 
                 scrollerRef.current!.scrollTo({
@@ -107,61 +116,81 @@ export function useVirtual({
 
     const sync = useSync({
         totalItemCount, totalRowCount, bufferCount, gridCount,
-        itemSize, isSizeFixed, onRangeChange
+        mode, itemSize, isSizeFixed, onRangeChange
     })
 
     const scrollerRef = useRef<VirtualRef>(null)
+    const headerRef = useRef<HTMLElement>(null)
+    const footerRef = useRef<HTMLElement>(null)
     const itemRefs = useRef<HTMLElement[]>([])
-
-    const scrollRatio = useRef(1)
-    const fillRatio = useRef(1)
 
     const [rowStart, setRowStart] = useSyncState(0)
     const [rowEnd, setRowEnd] = useSyncState(isSizeFixed || !totalRowCount ? -1 : 0)
-    const [scrollOffset, setScrollOffset] = useState(0)
-
-    const rangeStart = useMemo(() => {
-        return rowStart.current * gridCount
-    }, [rowStart.current, gridCount])
-
-    const calRangeEnd = (rowEnd: number) => {
-        return gridCount > 1
-            ? Math.min((rowEnd + 1) * gridCount, sync.current.totalItemCount - 1)
-            : rowEnd
-    }
-
-    const rangeEnd = useMemo(() => {
-        return calRangeEnd(rowEnd.current)
-    }, [rowEnd.current, totalItemCount, gridCount])
 
     const setRowRange = (start: number, end: number, noFlushSync?: boolean) => {
-        const {totalRowCount, bufferCount, onRangeChange} = sync.current
-        start = mode === 'list'
-            ? Math.max(start - bufferCount, 0)
-            : Math.max(start - bufferCount - 1, 0)
-        end = Math.min(end + bufferCount, totalRowCount - 1)
-
         if (start === rowStart.current && end === rowEnd.current) {
             return
         }
 
         const fn = () => {
-            onRangeChange?.(start * gridCount, calRangeEnd(end))
             setRowStart(start)
             setRowEnd(end)
         }
         noFlushSync ? fn() : flushSync(fn)
     }
 
+    const rowStartBuffer = useMemo(() => {
+        const {mode, bufferCount} = sync.current
+        return mode === 'list'
+            ? Math.max(rowStart.current - bufferCount, 0)
+            : Math.max(rowStart.current - bufferCount - 1, 0)
+    }, [rowStart.current, bufferCount, mode])
+
+    const rangeStart = useSync(rowStartBuffer * gridCount)
+
+    const calRowEndWithBuffer = (end = rowEnd.current) => {
+        if (end < 0) {
+            return end
+        }
+        const {bufferCount, totalRowCount} = sync.current
+        return Math.min(end + bufferCount, totalRowCount - 1)
+    }
+
+    const rowEndBuffer = useSync(
+        useMemo(calRowEndWithBuffer, [rowEnd.current, totalRowCount, bufferCount])
+    )
+
+    const rangeEnd = useSync(
+        useMemo(() => {
+            return gridCount === 1
+                ? rowEndBuffer.current
+                : Math.min((rowEndBuffer.current + 1) * gridCount, totalItemCount) - 1
+        }, [rowEndBuffer.current, totalItemCount, gridCount])
+    )
+
+    const scrollRatio = useRef(1)
+    const fillRatio = useRef(1)
+    const [scrollOffset, _setScrollOffset] = useState(0)
+
+    const setScrollOffset = (scrollPosition: number, clientSize: number) => {
+        let computedScrollPosition = Math.min(scrollPosition, MAX_DOM_SIZE - clientSize)
+        computedScrollPosition *= scrollRatio.current
+        _setScrollOffset(computedScrollPosition - scrollPosition)
+        return computedScrollPosition
+    }
+
+    useMemo(() => {
+        sync.current.onRangeChange?.(rangeStart.current, rangeEnd.current)
+    }, [rangeStart.current, rangeEnd.current])
+
     const offsetSize = isVertical ? 'offsetHeight' : 'offsetWidth'
-    const offsetPosition = isVertical ? 'offsetTop' : 'offsetLeft'
 
     const getScrollerInfo = () => {
         const scroller = scrollerRef.current
         if (scroller) {
             return {
-                scrollerSize: scroller[isVertical ? 'clientHeight' : 'clientWidth'],
-                contentSize: scroller[isVertical ? 'scrollHeight' : 'scrollWidth'],
+                clientSize: scroller[isVertical ? 'clientHeight' : 'clientWidth'],
+                scrollSize: scroller[isVertical ? 'scrollHeight' : 'scrollWidth'],
                 scrollPosition: scroller[isVertical ? 'scrollTop' : 'scrollLeft'],
             }
         }
@@ -173,16 +202,22 @@ export function useVirtual({
      */
 
     const updateRatioWithFixed = () => {
+        const {isSizeFixed, totalRowCount, itemSize} = sync.current
         if (!isSizeFixed || !scrollerRef.current) {
             return
         }
-        const contentSize = itemSize * totalRowCount
-        if (contentSize > MAX_DOM_SIZE) {
-            const {scrollerSize} = getScrollerInfo()!
-            scrollRatio.current = (contentSize - scrollerSize) / (MAX_DOM_SIZE - scrollerSize)
+        suppressScrollerResize.current = true
+        const headerHeight = headerRef.current?.offsetHeight || 0
+        const footerHeight = footerRef.current?.offsetHeight || 0
+        const contentSize = itemSize! * totalRowCount + headerHeight + footerHeight
 
-            const lastPageContentSize = (Math.ceil(scrollerSize / itemSize) + bufferCount) * itemSize
-            fillRatio.current = (MAX_DOM_SIZE - lastPageContentSize) / (contentSize - lastPageContentSize)
+        if (contentSize > MAX_DOM_SIZE) {
+            const {clientSize} = getScrollerInfo()!
+            scrollRatio.current = (contentSize - clientSize) / (MAX_DOM_SIZE - clientSize)
+
+            const onePageCount = calRowEndWithBuffer(Math.ceil(clientSize / itemSize!))
+            const onePageContentSize = onePageCount * itemSize!
+            fillRatio.current = (MAX_DOM_SIZE - onePageContentSize) / (contentSize - onePageContentSize)
         } else {
             scrollRatio.current = fillRatio.current = 1
         }
@@ -192,19 +227,14 @@ export function useVirtual({
 
     const computeRowRangeWithFixed = () => {
         const {itemSize, totalRowCount} = sync.current
-        const {scrollPosition, scrollerSize} = getScrollerInfo()!
-        let computedPosition = scrollPosition
+        let {scrollPosition, clientSize} = getScrollerInfo()!
 
-        const overflowed = itemSize! * totalRowCount > MAX_DOM_SIZE
-        if (overflowed) {
-            computedPosition = Math.min(scrollPosition, MAX_DOM_SIZE - scrollerSize)
-            computedPosition *= scrollRatio.current
-            setScrollOffset(computedPosition - scrollPosition)
+        if (itemSize! * totalRowCount > MAX_DOM_SIZE) {
+            scrollPosition = setScrollOffset(scrollPosition, clientSize)
         }
-
         return {
-            start: Math.floor(computedPosition / itemSize!),
-            end: Math.ceil((computedPosition + scrollerSize) / itemSize!) - 1
+            start: Math.floor(scrollPosition / itemSize!),
+            end: Math.ceil((scrollPosition + clientSize) / itemSize!) - 1
         }
     }
 
@@ -230,9 +260,10 @@ export function useVirtual({
         let isSizeChanged = false
 
         for (let i = 0; i < itemLen; i++) {
-            const cacheIndex = rangeStart + i
-            const cachedSize = cachedSizes.current[cacheIndex]
+            const itemIndex = rangeStart.current + i
+            const cachedSize = cachedSizes.current[itemIndex]
             const currentSize = items[i][offsetSize]
+
             if (cachedSize === currentSize) {
                 continue
             }
@@ -242,11 +273,13 @@ export function useVirtual({
                 sum += currentSize
                 count++
             }
-            cachedSizes.current[cacheIndex] = currentSize
-            accumulatedSizes.current.splice(cacheIndex)
-            const acc = getAccumulated(cacheIndex - 1)
+            cachedSizes.current[itemIndex] = currentSize
+            // 当前元素尺寸改变，需要重新计算后面元素的累加尺寸
+            accumulatedSizes.current.splice(itemIndex)
+            const acc = getAccumulated(itemIndex - 1)
             accumulatedSizes.current.push(acc + currentSize)
         }
+
         if (count) {
             estimatedItemSize.current = (estimatedItemSize.current * estimatedWeight.current + sum) / (estimatedWeight.current + count)
             estimatedWeight.current += count
@@ -254,40 +287,30 @@ export function useVirtual({
         isSizeChanged && updateRatioWithEstimated()
         // 非首次渲染，且未滚动至底部，需要再次检查渲染元素是否占满视口
         if (!isInitial && rowEnd.current < sync.current.totalRowCount - 1) {
-            const {[offsetPosition]: itemPosition, [offsetSize]: itemSize} = items[itemLen - 1]
-            const {scrollPosition, scrollerSize} = getScrollerInfo()!
-            const scrollEndPosition = scrollPosition + scrollerSize
-            const diff = scrollEndPosition - (itemPosition + itemSize)
+            const {scrollPosition, clientSize} = getScrollerInfo()!
+            const scrollEndPosition = scrollPosition + clientSize
+            const diff = scrollEndPosition - accumulatedSizes.current[rowEndBuffer.current]
+
             if (diff > 0) {
-                const estimatedCount = Math.ceil(diff / itemSize)
-                const end = sequentialSearch(scrollEndPosition, rangeEnd + estimatedCount)
-                setRowRange(rangeStart, end, true)
+                // 未占满
+                const estimatedCount = Math.ceil(diff / cachedSizes.current[rowEndBuffer.current])
+                const end = sequentialSearch(scrollEndPosition, rangeEnd.current + estimatedCount)
+                suppressScrollerResize.current = true
+                setRowRange(rowStart.current, end, true)
             }
         }
     }
 
     const updateRatioWithEstimated = () => {
+        suppressScrollerResize.current = true
         const contentSize = getTotalSize()
         if (contentSize > MAX_DOM_SIZE) {
-            const {scrollerSize} = getScrollerInfo()!
-            scrollRatio.current = (contentSize - scrollerSize) / (MAX_DOM_SIZE - scrollerSize)
+            const {clientSize} = getScrollerInfo()!
+            scrollRatio.current = (contentSize - clientSize) / (MAX_DOM_SIZE - clientSize)
 
-            const {totalRowCount} = sync.current
-            const {length: accLen} = accumulatedSizes.current
-            const estimatedCount = Math.ceil(scrollerSize / estimatedItemSize.current)
-            let lastPageContentSize
-
-            if (accLen === totalRowCount) {
-                const lastPageStartIndex = sequentialSearch(
-                    contentSize - scrollerSize,
-                    totalRowCount - estimatedCount - 1
-                )
-                lastPageContentSize = accumulatedSizes.current[accLen - 1] - accumulatedSizes.current[lastPageStartIndex - 1]
-            } else {
-                lastPageContentSize = estimatedCount * estimatedItemSize.current
-            }
-
-            fillRatio.current = (MAX_DOM_SIZE - lastPageContentSize) / (contentSize - lastPageContentSize)
+            const onePageCount = calRowEndWithBuffer(Math.ceil(clientSize / estimatedItemSize.current))
+            const onePageContentSize = getAccumulated(onePageCount)
+            fillRatio.current = (MAX_DOM_SIZE - onePageContentSize) / (contentSize - onePageContentSize)
         } else {
             scrollRatio.current = fillRatio.current = 1
         }
@@ -295,30 +318,25 @@ export function useVirtual({
 
     const computeRowRangeWithEstimated = () => {
         let lastAccIndex = accumulatedSizes.current.length - 1
-        const {scrollPosition, scrollerSize} = getScrollerInfo()!
-        let computedPosition = scrollPosition
+        let {scrollPosition, clientSize} = getScrollerInfo()!
 
-        const overflowed = getTotalSize() > MAX_DOM_SIZE
-        if (overflowed) {
-            computedPosition = Math.min(scrollPosition, MAX_DOM_SIZE - scrollerSize)
-            computedPosition *= scrollRatio.current
-            setScrollOffset(computedPosition - scrollPosition)
+        if (getTotalSize() > MAX_DOM_SIZE) {
+            scrollPosition = setScrollOffset(scrollPosition, clientSize)
         }
 
-        const start = computedPosition >= getAccumulated(lastAccIndex)
+        const start = scrollPosition >= getAccumulated(lastAccIndex)
             // 超过或等于已缓存的位置，使用顺序查找
-            ? sequentialSearch(computedPosition, lastAccIndex)
+            ? sequentialSearch(scrollPosition, lastAccIndex)
             // 在已缓存位置内，使用二分查找
-            : binarySearch(computedPosition, 0, lastAccIndex - 1)
+            : binarySearch(scrollPosition, 0, lastAccIndex - 1)
 
         let end = -1
         // 特殊情况，当totalRowCount为0，首次计算时无estimatedItemSize
         if (estimatedItemSize.current) {
-            const estimatedCount = Math.ceil(scrollerSize / estimatedItemSize.current)
+            const estimatedCount = Math.ceil(clientSize / estimatedItemSize.current)
             // 从预估位置开始顺序查找
-            end = sequentialSearch(computedPosition + scrollerSize, start + estimatedCount - 1)
+            end = sequentialSearch(scrollPosition + clientSize, start + estimatedCount - 1)
         }
-
         return {start, end}
     }
 
@@ -356,18 +374,17 @@ export function useVirtual({
         if (index < 0) {
             return 0
         }
-
-        const _accumulatedSizes = accumulatedSizes.current
-        const {length: accLen} = _accumulatedSizes
+        const accSizes = accumulatedSizes.current
+        const {length: accLen} = accSizes
         if (index >= accLen) {
-            let acc = _accumulatedSizes[accLen - 1] || 0
+            let acc = accSizes[accLen - 1] || 0
             for (let i = accLen; i <= index; i++) {
                 acc += getCached(i)
-                _accumulatedSizes.push(acc)
+                accSizes.push(acc)
             }
         }
 
-        return _accumulatedSizes[index]
+        return accSizes[index]
     }
 
     const getCached = (index: number) => {
@@ -406,11 +423,41 @@ export function useVirtual({
         setRowRange(start, end, noFlushSync)
     }
 
-    useMemo(() => {
+    useEffect(() => {
         computeRowRange(true)
-    }, [itemSize])
+    }, [])
 
-    const suppressResize = useRef(false)
+    /**
+     * scroller resize
+     */
+
+    const suppressScrollerResize = useRef(false)
+
+    useEffect(() => {
+        suppressScrollerResize.current && setTimeout(() => {
+            suppressScrollerResize.current = false
+        })
+    })
+
+    useEffect(() => {
+        const scroller = scrollerRef.current
+        if (!scroller) {
+            return
+        }
+        const scrollerResize = new ResizeObserver(() => {
+            if (!suppressScrollerResize.current) {
+                sync.current.isSizeFixed
+                    ? updateRatioWithFixed()
+                    : updateRatioWithEstimated()
+                computeRowRange()
+            }
+        })
+        scroller && scrollerResize.observe(scroller)
+
+        return () => {
+            scrollerResize.disconnect()
+        }
+    }, [])
 
     useMemo(() => {
         if (!scrollerRef.current) {
@@ -418,29 +465,39 @@ export function useVirtual({
         }
         if (totalRowCount <= rowEnd.current) {
             // 数量变少导致rowEnd超过最大范围
-            const {scrollerSize} = getScrollerInfo()!
+            const {clientSize} = getScrollerInfo()!
             const {isSizeFixed, itemSize} = sync.current
 
+            suppressScrollerResize.current = true
             if (isSizeFixed) {
-                const onePageCount = Math.ceil(scrollerSize / itemSize!)
+                const onePageCount = Math.ceil(clientSize / itemSize!)
                 setRowRange(totalRowCount - onePageCount, totalRowCount - 1, true)
             } else {
-                const estimatedCount = Math.ceil(scrollerSize / estimatedItemSize.current)
+                const estimatedCount = Math.ceil(clientSize / estimatedItemSize.current)
                 const start = sequentialSearch(
-                    getAccumulated(totalRowCount - 1) - scrollerSize,
+                    getAccumulated(totalRowCount - 1) - clientSize,
                     totalRowCount - estimatedCount - 1
                 )
                 setRowRange(start, totalRowCount - 1, true)
             }
         } else {
-            const {contentSize, scrollerSize} = getScrollerInfo()!
+            const {scrollSize, clientSize} = getScrollerInfo()!
             // 数量变化但内容未填满scroller，需要主动触发计算
-            if (contentSize <= scrollerSize) {
-                suppressResize.current = true
+            if (scrollSize <= clientSize) {
+                suppressScrollerResize.current = true
                 computeRowRange(true)
             }
+            // else 数量变化时内容已填满，无需计算，只需修改`fillEnd`
         }
     }, [totalRowCount])
+
+    /**
+     * item resize
+     */
+
+    useMemo(() => {
+        computeRowRange(true)
+    }, [itemSize])
 
     const itemResizeObserver = useRef<ResizeObserver>(null)
 
@@ -461,25 +518,9 @@ export function useVirtual({
         }
     }
 
-    useEffect(() => {
-        const scroller = scrollerRef.current
-        if (!scroller) {
-            return
-        }
-        const scrollerResize = new ResizeObserver(() => {
-            if (suppressResize.current) {
-                // 若suppressResize.current为true，表示此次resize由数量变化造成，已在上方处理
-                suppressResize.current = false
-            } else {
-                computeRowRange()
-            }
-        })
-        scroller && scrollerResize.observe(scroller)
-
-        return () => {
-            scrollerResize.disconnect()
-        }
-    }, [])
+    /**
+     * scroll listener
+     */
 
     useEffect(() => {
         const scroller = scrollerRef.current
@@ -496,27 +537,23 @@ export function useVirtual({
         }
     }, [])
 
+    /**
+     * render
+     */
+
     const fillStart = useMemo(() => {
         return isSizeFixed
-            ? rowStart.current * itemSize
-            : getAccumulated(rowStart.current - 1)
-    }, [rowStart.current, itemSize])
+            ? rowStartBuffer * itemSize
+            : getAccumulated(rowStartBuffer - 1)
+    }, [rowStartBuffer, itemSize])
 
     const fillEnd = useMemo(() => {
         return isSizeFixed
-            ? Math.max((totalRowCount - 1 - rowEnd.current), 0) * itemSize
-            : accumulatedSizes.current.length && rowEnd.current < totalRowCount
-                ? getTotalSize() - getAccumulated(rowEnd.current)
+            ? Math.max((totalRowCount - 1 - rowEndBuffer.current), 0) * itemSize
+            : accumulatedSizes.current.length && rowEndBuffer.current < totalRowCount - 1
+                ? getTotalSize() - getAccumulated(rowEndBuffer.current)
                 : 0
-    }, [rowEnd.current, totalRowCount, itemSize])
-
-    const translate = useMemo(() => {
-        if (!scrollOffset || !fillEnd) {
-            return 0
-        }
-        const computedFillStart = fillStart * fillRatio.current
-        return fillStart - computedFillStart - scrollOffset
-    }, [scrollOffset, fillStart, fillEnd])
+    }, [rowEndBuffer.current, totalRowCount, itemSize])
 
     const groupTitleIndices = useMemo(() => {
         const indices: number[] = []
@@ -574,7 +611,7 @@ export function useVirtual({
         itemRefs.current = []
         const items: ReactNode[] = []
         if (mode === 'list') {
-            for (let i = rangeStart; i <= rangeEnd; i++) {
+            for (let i = rangeStart.current; i <= rangeEnd.current; i++) {
                 const p = typeof itemProps === 'function' ? itemProps(i) : itemProps
                 items.push(
                     <ItemComponent
@@ -583,6 +620,7 @@ export function useVirtual({
                         ref={cloneRef(p?.ref, setItemResizeObserver)}
                         style={{
                             [isVertical ? 'height' : 'width']: itemSize,
+                            overflowAnchor: 'none',
                             ...gridCount > 1 && {
                                 [isVertical ? 'width' : 'height']: `${100 / gridCount}%`
                             },
@@ -595,7 +633,7 @@ export function useVirtual({
             }
         } else {
             // mode === 'group'
-            for (let i = rangeStart; i <= rangeEnd; i++) {
+            for (let i = rangeStart.current; i <= rangeEnd.current; i++) {
                 const {groupIndex, exact} = getGroupIndex(i)
                 const fn = (isTitle = exact) => {
                     if (isTitle && !renderGroupTitleContent) {
@@ -631,22 +669,20 @@ export function useVirtual({
                     )
                 }
                 // 第一个元素如果不是标题，需要强制渲染该组标题
-                i === rangeStart && !exact
+                i === rangeStart.current && !exact
                     ? fn(true)
                     : fn()
             }
         }
         return items
-    }, [rangeStart, rangeEnd, renderItemContent, itemProps, groupTitleProps, gridCount, itemSize, groupTitleSize])
+    }, [rangeStart.current, rangeEnd.current, renderItemContent, itemProps, groupTitleProps, gridCount, itemSize, groupTitleSize, mode])
 
     return {
+        scrollerRef, headerRef, footerRef,
         scrollerStyle: isVertical ? verticalScrollerStyle : horizontalScrollerStyle,
-        scrollerRef,
-        translate,
-        fill: {
-            start: fillStart * fillRatio.current,
-            end: fillEnd * fillRatio.current
-        },
+        scrollOffset: fillStart > MAX_DOM_SIZE / 2 ? 0 : scrollOffset,
+        fillStart: fillStart > MAX_DOM_SIZE / 2 ? fillStart - scrollOffset : fillStart,
+        fillEnd: fillEnd * fillRatio.current,
         renderedItems
     }
 }

@@ -1,5 +1,15 @@
 import {Dispatch, Ref, RefObject, SetStateAction, useCallback, useRef, useState} from 'react'
 
+export function computeMaxDomSize() {
+    const t = document.createElement('div')
+    t.style.position = 'fixed'
+    t.style.height = (navigator.userAgent.includes('Firefox') ? 1e7 : 4e7) + 'px'
+    document.body.appendChild(t)
+    const {offsetHeight} = t
+    t.remove()
+    return offsetHeight / 2
+}
+
 /**
  * 将某个值使用ref同步，主要用于对付组件的闭包问题
  * @param value

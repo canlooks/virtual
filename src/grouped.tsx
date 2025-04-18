@@ -30,8 +30,8 @@ export function GroupedVList({
     } = slots as any
 
     const {
-        scrollerStyle, scrollerRef, translate,
-        fill: {start, end}, renderedItems
+        scrollerRef, scrollerStyle, scrollOffset,
+        fillStart, fillEnd, renderedItems
     } = useVirtual({
         mode: 'group',
         ref: props.ref,
@@ -65,9 +65,9 @@ export function GroupedVList({
                 {...slotProps.list}
                 style={{
                     boxSizing: 'border-box',
-                    [isVertical ? 'paddingTop' : 'paddingLeft']: start,
-                    [isVertical ? 'paddingBottom' : 'paddingBottom']: end,
-                    transform: translate ? `${isVertical ? 'translateY' : 'translateX'}(${translate}px)` : void 0,
+                    [isVertical ? 'paddingTop' : 'paddingLeft']: fillStart,
+                    [isVertical ? 'paddingBottom' : 'paddingBottom']: fillEnd,
+                    transform: scrollOffset ? `${isVertical ? 'translateY' : 'translateX'}(${-scrollOffset}px)` : void 0,
                     ...slotProps.list?.style
                 }}
             >

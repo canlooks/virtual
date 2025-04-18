@@ -1,7 +1,7 @@
 import {createRoot} from 'react-dom/client'
-import {useMemo, useState} from 'react'
-import {VTable, VTableProps} from '../src'
-import {Table, TableBody, TableContainer, TableHead, TableRow} from '@mui/material'
+import {useEffect, useMemo, useRef, useState} from 'react'
+import {VList, VTable, VTableProps} from '../src'
+import {Table, TableBody, TableCell, TableContainer, TableHead, TableRow} from '@mui/material'
 
 createRoot(document.getElementById('app')!).render(<App/>)
 
@@ -18,7 +18,7 @@ const virtualTableSlots: VTableProps['slots'] = {
 function App() {
     const users = useMemo(() => {
         // return Array.from({length: 640_000}, (_, index) => ({
-        return Array.from({length: 400_000}, (_, index) => ({
+        return Array.from({length: 1500_000}, (_, index) => ({
             name: `User ${index}`,
             bgColor: `hsl(${Math.random() * 360}, 70%, 80%)`,
             size: Math.floor(Math.random() * 100) + 100,
@@ -31,7 +31,7 @@ function App() {
     return (
         <>
             {/*<VList*/}
-            {/*    style={{height: 400}}*/}
+            {/*    style={{height: 800}}*/}
             {/*    itemSize={150}*/}
             {/*    // gridCount={3}*/}
             {/*    totalCount={totalCount}*/}
@@ -55,6 +55,8 @@ function App() {
             {/*        )*/}
             {/*    }}*/}
             {/*/>*/}
+
+
             <button onClick={() => setTotalCount(0)}>button0</button>
             <button onClick={() => setTotalCount(2)}>button2</button>
             <button onClick={() => setTotalCount(5)}>button5</button>
@@ -65,12 +67,18 @@ function App() {
                 slots={virtualTableSlots}
                 rowHeight={34}
                 totalCount={totalCount}
+                headerContent={
+                    <TableRow>
+                        <TableCell>User</TableCell>
+                        <TableCell>Description</TableCell>
+                    </TableRow>
+                }
                 renderRowContent={index => {
                     const user = users[index]
                     return (
                         <>
-                            <td>{user.name}</td>
-                            <td>{user.description}</td>
+                            <TableCell>{user.name}</TableCell>
+                            <TableCell>{user.description}</TableCell>
                         </>
                     )
                 }}

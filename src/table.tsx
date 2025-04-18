@@ -56,8 +56,9 @@ export const VTable = memo(({
     } = slots
 
     const {
-        scrollerStyle, scrollerRef, translate,
-        fill: {start, end}, renderedItems,
+        scrollerRef, headerRef, footerRef,
+        scrollerStyle, scrollOffset,
+        fillStart, fillEnd, renderedItems
     } = useVirtual({
         mode: 'list',
         ref: props.ref,
@@ -85,21 +86,20 @@ export const VTable = memo(({
                 {...slotProps.table}
                 style={{
                     borderSpacing: 0,
-                    transform: translate ? `translateY(${translate}px)` : void 0,
                     ...slotProps.table?.style
                 }}
             >
                 {!!headerContent &&
-                    <TableHead>
+                    <TableHead ref={headerRef}>
                         {headerContent}
                     </TableHead>
                 }
-                <TableBody>
+                <TableBody style={{transform: scrollOffset ? `translateY(${-scrollOffset}px)` : void 0}}>
                     {totalCount
                         ? <>
                             <tr>
                                 <td style={{
-                                    height: start,
+                                    height: fillStart,
                                     border: 0,
                                     padding: 0
                                 }}/>
@@ -107,7 +107,7 @@ export const VTable = memo(({
                             {renderedItems}
                             <tr>
                                 <td style={{
-                                    height: end,
+                                    height: fillEnd,
                                     border: 0,
                                     padding: 0
                                 }}/>
@@ -117,7 +117,7 @@ export const VTable = memo(({
                     }
                 </TableBody>
                 {!!footerContent &&
-                    <TableFoot>
+                    <TableFoot ref={footerRef}>
                         {footerContent}
                     </TableFoot>
                 }
