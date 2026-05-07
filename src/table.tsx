@@ -1,6 +1,7 @@
 import {JSX, memo, ReactNode} from 'react'
 import {CommonSlotProps, CommonVirtualProps, SlotsAndProps} from './types'
 import {useVirtual} from './core'
+import {mergeComponentProps} from './util'
 
 export interface VTableSlotProps extends Omit<CommonSlotProps, 'item'> {
     /** 默认为`<table>` */
@@ -75,26 +76,30 @@ export const VTable = memo(({
 
     return (
         <Scroller
-            {...props}
-            ref={scrollerRef}
-            style={{
-                ...scrollerStyle,
-                ...props.style
-            }}
+            {...mergeComponentProps(props, slotProps.scroller, {
+                ref: scrollerRef,
+                style: scrollerStyle
+            })}
         >
             <Table
-                {...slotProps.table}
-                style={{
-                    borderSpacing: 0,
-                    ...slotProps.table?.style
-                }}
+                {...mergeComponentProps(slotProps.table, {
+                    style: {borderSpacing: 0}
+                })}
             >
                 {!!headerContent &&
-                    <TableHead ref={headerRef}>
+                    <TableHead
+                        {...mergeComponentProps(slotProps.thead, {
+                            ref: headerRef
+                        })}
+                    >
                         {headerContent}
                     </TableHead>
                 }
-                <TableBody style={{transform: scrollOffset ? `translateY(${-scrollOffset}px)` : void 0}}>
+                <TableBody
+                    {...mergeComponentProps(slotProps.tbody, {
+                        style: {transform: scrollOffset ? `translateY(${-scrollOffset}px)` : void 0}
+                    })}
+                >
                     {totalCount
                         ? <>
                             <tr>
@@ -117,7 +122,11 @@ export const VTable = memo(({
                     }
                 </TableBody>
                 {!!footerContent &&
-                    <TableFoot ref={footerRef}>
+                    <TableFoot
+                        {...mergeComponentProps(slotProps, {
+                            ref: footerRef
+                        })}
+                    >
                         {footerContent}
                     </TableFoot>
                 }

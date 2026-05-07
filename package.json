@@ -1,6 +1,6 @@
 {
   "name": "@canlooks/virtual",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "author": "C.CanLiang <canlooks@gmail.com>",
   "description": "My ui framework",
   "license": "MIT",
@@ -52,7 +52,8 @@
   "scripts": {
     "clean": "npx shx rm -rf dist",
     "build": "tsc -m esnext --outDir dist/esm & tsc -m commonjs --outDir dist/cjs",
-    "rebuild": "npm run clean && npm run build",
+    "build:alias": "tsc-alias --outDir dist/esm",
+    "rebuild": "npm run clean && npm run build && npm run build:alias",
     "test:browser": "vite -c test/vite.config.mts",
     "test:unit": "npx ts-node test/unit.ts",
     "test:build": "vite build -c test/vite.config.mts"
@@ -62,14 +63,15 @@
   },
   "devDependencies": {
     "@emotion/react": "^11.14.0",
-    "@emotion/styled": "^11.14.0",
-    "@mui/material": "^7.0.0",
-    "@types/node": "^22.13.5",
-    "@types/react": "^19.0.10",
-    "@types/react-dom": "^19.0.4",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "typescript": "^5.7.3",
-    "vite": "^6.2.0"
+    "@emotion/styled": "^11.14.1",
+    "@mui/material": "^9.0.1",
+    "@types/node": "^25.6.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "tsc-alias": "^1.8.17",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.11"
   }
 }
